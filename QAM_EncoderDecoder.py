@@ -70,12 +70,7 @@ def symbol_to_OFDMframes(symbols,N,prefix_no):
 
         # reverse conjugate
         for j in range(len(OFDM_block)-2,0,-1):
-            try:
-                OFDM_block.append(np.conj(OFDM_block[j]))
-            except:
-                print(OFDM_block)
-                print(len(OFDM_block))
-                print("---------------i:",i," j:",j)
+            OFDM_block.append(np.conj(OFDM_block[j]))
                 
         
         # ----add cyclic prefix----
