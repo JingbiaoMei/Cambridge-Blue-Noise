@@ -24,6 +24,8 @@ def file_to_bitstr(filename):
 
 
 def encode_bitstr2symbols(bits):
+    print("about to do encode_bitstr2symbols encoding")
+
     symbols=[]
     for i in range(0,len(bits),2):
         bit1=bits[i]
@@ -40,26 +42,95 @@ def encode_bitstr2symbols(bits):
             else:
                 symbol=np.complex128(complex(-1,-1))
         symbols.append(symbol)
+    print("encode_bitstr2symbols encoding finished")
     return symbols
 
 
-    # np.real(element) >= 0:
-    #         if np.imag(element) >= 0:
-    #             data += '00'
-    #         else:
-    #             data += '10'
-    #     else:
-    #         if np.imag(element) >= 0:
-    #             data += '01'
-    #         else:
-    #             data += '11'
+
+#-------------OFDM Encoder----------------
+
+def symbol_to_OFDMframes(symbols,N,prefix_no):
+    """returns 2d array of iDFTs
+    """
+    print("about to do symbol_to_OFDMframes encoding")
+
+    info_bins=int(N/2)-1 #e.g. 511
+    OFDM_frames=[]
+
+    # for each OFDM block
+    for i in range (0,len(symbols),info_bins+1):
+        OFDM_block=[0] #frequency bins 0 and 512(int(N/2)) contains value 0
+        OFDM_block[1:]=symbols[i:i+info_bins]
+
+        #add 0s to the end when data is not an integer factor of 512
+        while len(OFDM_block)<=info_bins:
+            OFDM_block.append(0)
+
+        OFDM_block.append(0)#frequency bins 0 and 512(int(N/2)) contains value 0
+
+        # reverse conjugate
+        for j in range(len(OFDM_block)-2,0,-1):
+            try:
+                OFDM_block.append(np.conj(OFDM_block[j]))
+            except:
+                print(OFDM_block)
+                print(len(OFDM_block))
+                print("---------------i:",i," j:",j)
+                
+        
+        # ----add cyclic prefix----
+        OFDM_block=OFDM_block[N-prefix_no:N]+OFDM_block
+
+        #----iDFT----
+        OFDM_frame=np.fft.ifft(OFDM_block, n=N)
+        OFDM_frames.append(OFDM_frame)
+
+    print("symbol_to_OFDMframes encoding finished")
+    return OFDM_frames
+
+
+
+#-------------OFDM Decoder----------------
+def OFDMframes_to_bitstring(OFDM_frames,N,prefix_no,channel_fft=False):
+    print("about to do OFDMframes_to_bitstring decoding")
+    bits=""
+    for i in range(len(OFDM_frames)):
+        frame_prefix = OFDM_frames[i][prefix_no:] # remove cp
+        frame_dft = np.fft.fft(frame_prefix, n=N) 
+        if channel_fft:
+            bits+=decode_symbols_2_bitstring(frame_dft[1:int(N/2)],channel_fft[1:int(N/2)])
+        else:
+            bits+=decode_symbols_2_bitstring(frame_dft[1:int(N/2)])
+        # print("frame_dft[1:int(N/2)]", int(N/2))
+
+    print("OFDMframes_to_bitstring decoding finished")
+    return bits
+
+def OFDMframes_to_symbols(OFDM_frames,N,prefix_no,channel_fft=False):
+    print("about to do OFDMframes_to_bitstring decoding")
+    symbols=[]
+    for i in range(len(OFDM_frames)):
+        frame_prefix = OFDM_frames[i][prefix_no:] # remove cp
+        frame_dft = np.fft.fft(frame_prefix, n=N) 
+        if channel_fft:
+            symbols.append(frame_dft[1:int(N/2)]/channel_fft[1:int(N/2)])
+        else:
+            symbols.append(frame_dft[1:int(N/2)])
+        # print("frame_dft[1:int(N/2)]", int(N/2))
+
+    print("OFDMframes_to_bitstring decoding finished")
+    return symbols
+
 
 
 # -------------Decoder----------------
-def decode_symbols_2_bitstring(symbols):
+def decode_symbols_2_bitstring(symbols,channel_fft=False):
     data = ''
     for i in range(len(symbols)):
-        element=symbols[i]
+        if channel_fft:
+            element=symbols[i]/ channel_fft[i]
+        else:
+            element=symbols[i]
         if np.real(element) >= 0:
             if np.imag(element) >= 0:
                 data += '00'
@@ -73,18 +144,32 @@ def decode_symbols_2_bitstring(symbols):
     return data
 
 
-def bitstr_to_file(bin_strings,filename):
+def bitstr_to_file(bin_strings,filename,cut=0):
+    """
+    Args:
+        bin_strings ([str]): 
+        filename ([str]): 
+        cut (int, optional): [the length of information that you want to cut out at the start]. Defaults to 0.
+    """
 
     data_bytes = bitarray(bin_strings)
 
     with open(filename, 'wb') as f:
-        f.write(data_bytes.tobytes())
-    print("written to ",filename)
+        f.write(data_bytes.tobytes()[cut:])
+    print("bitstr written to ",filename)
 
 
 if __name__=='__main__':
     filename='trial.png'
     bits=file_to_bitstr(filename)
     symbols=encode_bitstr2symbols(bits)
+    # print(symbols)
+
+    N = 1024
+    prefix_no = 32
+    OFDM_frames=symbol_to_OFDMframes(symbols,N,prefix_no)
+    
+
     bin_strings=decode_symbols_2_bitstring(symbols)
-    bitstr_to_file(bin_strings,'trial_encodeddecoded.png')
+    bin_strings=OFDMframes_to_bitstring(OFDM_frames,N,prefix_no)
+    bitstr_to_file(bin_strings,'trial_OFDM_encodeddecoded.png')
