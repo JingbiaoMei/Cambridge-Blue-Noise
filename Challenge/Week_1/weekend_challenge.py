@@ -6,7 +6,7 @@ N = 1024
 prefix = 32
 
 channel_IR = np.genfromtxt('channel.csv',delimiter=',')
-rx_signal = np.genfromtxt('file1.csv',delimiter=',')
+rx_signal = np.genfromtxt('file6.csv',delimiter=',')
 
 num_blocks = len(rx_signal)/(N+prefix) # 950 for file 1
 ofdm_frames = np.split(rx_signal, num_blocks) # lenth 1056
@@ -34,8 +34,8 @@ data_bytes = bitarray(data)
 
 #print(len(data_bytes.tobytes()))
 
-with open("decoded.tiff", 'wb') as f:
-    f.write(data_bytes.tobytes()[29:])
+with open("decoded6.txt", 'wb') as f:
+    f.write(data_bytes.tobytes()[:])
 
 
 
