@@ -106,21 +106,6 @@ def OFDMframes_to_bitstring(OFDM_frames,N,prefix_no,channel_fft=False):
     print("OFDMframes_to_bitstring decoding finished")
     return bits
 
-def OFDMframes_to_symbols(OFDM_frames,N,prefix_no,channel_fft=False):
-    print("about to do OFDMframes_to_bitstring decoding")
-    symbols=[]
-    for i in range(len(OFDM_frames)):
-        frame_prefix = OFDM_frames[i][prefix_no:] # remove cp
-        frame_dft = np.fft.fft(frame_prefix, n=N) 
-        if channel_fft:
-            symbols.append(frame_dft[1:int(N/2)]/channel_fft[1:int(N/2)])
-        else:
-            symbols.append(frame_dft[1:int(N/2)])
-        # print("frame_dft[1:int(N/2)]", int(N/2))
-
-    print("OFDMframes_to_bitstring decoding finished")
-    return symbols
-
 
 
 # -------------Decoder----------------
@@ -163,13 +148,12 @@ if __name__=='__main__':
     filename='trial.png'
     bits=file_to_bitstr(filename)
     symbols=encode_bitstr2symbols(bits)
-    # print(symbols)
-
+    
+    #---OFDM encoding and decoding---
     N = 1024
     prefix_no = 32
     OFDM_frames=symbol_to_OFDMframes(symbols,N,prefix_no)
-    
-
-    bin_strings=decode_symbols_2_bitstring(symbols)
     bin_strings=OFDMframes_to_bitstring(OFDM_frames,N,prefix_no)
+
+    # bin_strings=decode_symbols_2_bitstring(symbols)
     bitstr_to_file(bin_strings,'trial_OFDM_encodeddecoded.png')
