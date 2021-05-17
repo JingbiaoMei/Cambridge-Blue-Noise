@@ -69,15 +69,17 @@ def symbol_to_OFDMframes(symbols,N,prefix_no):
         OFDM_block.append(0)#frequency bins 0 and 512(int(N/2)) contains value 0
 
         # reverse conjugate
-        for j in range(len(OFDM_block)-2,0,-1):
+        for j in range(len(OFDM_block)-2,0,-1): # count up or down
             OFDM_block.append(np.conj(OFDM_block[j]))
                 
-        
-        # ----add cyclic prefix----
-        OFDM_block=OFDM_block[N-prefix_no:N]+OFDM_block
-
         #----iDFT----
         OFDM_frame=np.fft.ifft(OFDM_block, n=N)
+        
+
+        # ----add cyclic prefix----
+        cyclic_prefix = OFDM_frame[N-prefix_no:N]
+        
+        OFDM_frame = np.append(cyclic_prefix, OFDM_frame, axis=0)        
         OFDM_frames.append(OFDM_frame)
 
     print("symbol_to_OFDMframes encoding finished")
