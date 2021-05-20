@@ -58,7 +58,7 @@ def symbol_to_OFDMframes(symbols,N,prefix_no):
     OFDM_frames=[]
 
     # for each OFDM block
-    for i in range (0,len(symbols),info_bins+1):
+    for i in range (0,len(symbols),info_bins):
         OFDM_block=[0] #frequency bins 0 and 512(int(N/2)) contains value 0
         OFDM_block[1:]=symbols[i:i+info_bins]
 
@@ -142,15 +142,15 @@ def bitstr_to_file(bin_strings,filename,cut=0):
 
 
 if __name__=='__main__':
-    filename='trial.png'
+    filename='input.png'
     bits=file_to_bitstr(filename)
     symbols=encode_bitstr2symbols(bits)
-    
+    print(np.shape(symbols))
     #---OFDM encoding and decoding---
     N = 1024
     prefix_no = 32
     OFDM_frames=symbol_to_OFDMframes(symbols,N,prefix_no)
     bin_strings=OFDMframes_to_bitstring(OFDM_frames,N,prefix_no)
-
+    print(len(bin_strings)/2)
     # bin_strings=decode_symbols_2_bitstring(symbols)
-    bitstr_to_file(bin_strings,'trial_OFDM_encodeddecoded.png')
+    bitstr_to_file(bin_strings,'out.png')
