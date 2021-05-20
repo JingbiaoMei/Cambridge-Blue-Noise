@@ -142,7 +142,7 @@ def bitstr_to_file(bin_strings,filename,cut=0):
 
 
 if __name__=='__main__':
-    filename='input.png'
+    filename='chirp_lin_combined.wav'
     bits=file_to_bitstr(filename)
     symbols=encode_bitstr2symbols(bits)
     print(np.shape(symbols))
@@ -153,4 +153,4 @@ if __name__=='__main__':
     bin_strings=OFDMframes_to_bitstring(OFDM_frames,N,prefix_no)
     print(len(bin_strings)/2)
     # bin_strings=decode_symbols_2_bitstring(symbols)
-    bitstr_to_file(bin_strings,'out.png')
+    bitstr_to_file(bin_strings,'rec_chirp_lin_combined.wav')
