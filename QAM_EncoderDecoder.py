@@ -150,6 +150,7 @@ if __name__=='__main__':
     N = 1024
     prefix_no = 32
     OFDM_frames=symbol_to_OFDMframes(symbols,N,prefix_no)
+    print(np.shape(OFDM_frames))
     bin_strings=OFDMframes_to_bitstring(OFDM_frames,N,prefix_no)
     print(len(bin_strings)/2)
     # bin_strings=decode_symbols_2_bitstring(symbols)
