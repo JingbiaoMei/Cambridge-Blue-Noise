@@ -105,6 +105,17 @@ def OFDMframes_to_bitstring(OFDM_frames,N,prefix_no,channel_fft=False):
 
 
 
+def OFDMframes_to_constellation(OFDM_frames,N,prefix_no,channel_fft=False):
+    #print("about to do OFDMframes_to_bitstring decoding")
+    bits=""
+    for i in range(len(OFDM_frames)):
+        frame_prefix = OFDM_frames[i][prefix_no:] # remove cp
+        frame_dft = np.fft.fft(frame_prefix, n=N) 
+    #print("OFDMframes_to_bitstring decoding finished")
+    return frame_dft
+
+
+
 # -------------Decoder----------------
 def decode_symbols_2_bitstring(symbols,channel_fft=False):
     data = ''
@@ -150,6 +161,7 @@ if __name__=='__main__':
     N = 1024
     prefix_no = 32
     OFDM_frames=symbol_to_OFDMframes(symbols,N,prefix_no)
+    print(np.shape(OFDM_frames))
     bin_strings=OFDMframes_to_bitstring(OFDM_frames,N,prefix_no)
     print(len(bin_strings)/2)
     # bin_strings=decode_symbols_2_bitstring(symbols)
