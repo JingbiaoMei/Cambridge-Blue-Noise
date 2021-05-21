@@ -21,7 +21,7 @@ else:
 
 
 res = []
-with open('data/results.csv', 'r') as f:
+with open('ldpc_jossy/data/results.csv', 'r') as f:
     rr = csv.reader(f)
     for row in rr:
         res.append(row)

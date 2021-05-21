@@ -106,7 +106,7 @@ def sim(standard, rate, z, ptype='A', N_MEASUREMENTS=24, C_AWGN_OFFSET=1.0, P_ST
             if nblocks >= MAX_BLOCKS:
                 break
             
-        f = open('data/results.txt', 'a')
+        f = open('ldpc_jossy/data/results.txt', 'a')
         output = (standard, rate, z, SNR, nblocks, nblockerrors, nblocks*K, nbiterrors,
                   nit_total)
         f.write(str(output))
