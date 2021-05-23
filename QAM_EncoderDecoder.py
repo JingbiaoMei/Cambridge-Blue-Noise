@@ -1,6 +1,7 @@
 from os import name
 from bitarray import bitarray
 import numpy as np
+from util import *
 
 # -------------Encoder----------------
 def file_to_bitstr(filename):
@@ -103,7 +104,23 @@ def OFDMframes_to_bitstring(OFDM_frames,N,prefix_no,channel_fft=False):
     print("OFDMframes_to_bitstring decoding finished")
     return bits
 
+def OFDMframes_to_y_float(OFDM_frames,N,prefix_no,):
+    """inputs:
+        OFDM_frames: 2d np.array
+    returns 1d array [[OFDMframe0_0_real,OFDMframe0_0_img,OFDMframe0_1_real,...],[OFDMframe1_0_real,...],...]
+    """
+    print("about to do OFDMframes_to_y_float decoding")
+    ys=[]
+    for i in range(len(OFDM_frames)):
+        frame_prefix = OFDM_frames[i][prefix_no:] # remove cp
+        frame_dft = np.fft.fft(frame_prefix, n=N) 
+        
+        ys+=separate_real_img(frame_dft[1:int(N/2)])
+        # decode_symbols_2_bitstring(frame_dft[1:int(N/2)])
+        # print("frame_dft[1:int(N/2)]", int(N/2))
 
+    print("OFDMframes_to_y_float decoding finished")
+    return ys
 
 def OFDMframes_to_constellation(OFDM_frames,N,prefix_no,channel_fft=False):
     #print("about to do OFDMframes_to_bitstring decoding")
@@ -152,17 +169,3 @@ def bitstr_to_file(bin_strings,filename,cut=0):
     print("bitstr written to ",filename)
 
 
-if __name__=='__main__':
-    filename='input.png'
-    bits=file_to_bitstr(filename)
-    symbols=encode_bitstr2symbols(bits)
-    print(np.shape(symbols))
-    #---OFDM encoding and decoding---
-    N = 1024
-    prefix_no = 32
-    OFDM_frames=symbol_to_OFDMframes(symbols,N,prefix_no)
-    print(np.shape(OFDM_frames))
-    bin_strings=OFDMframes_to_bitstring(OFDM_frames,N,prefix_no)
-    print(len(bin_strings)/2)
-    # bin_strings=decode_symbols_2_bitstring(symbols)
-    bitstr_to_file(bin_strings,'out.png')
