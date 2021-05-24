@@ -114,7 +114,6 @@ def OFDMframes_to_y_float(OFDM_frames,N,prefix_no,):
     for i in range(len(OFDM_frames)):
         frame_prefix = OFDM_frames[i][prefix_no:] # remove cp
         frame_dft = np.fft.fft(frame_prefix, n=N) 
-        
         ys+=separate_real_img(frame_dft[1:int(N/2)])
         # decode_symbols_2_bitstring(frame_dft[1:int(N/2)])
         # print("frame_dft[1:int(N/2)]", int(N/2))

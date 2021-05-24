@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 
 def divide_bin_to_sizes(N:int,sizes:list):
     # TODO: improve this algorithm
