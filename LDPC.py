@@ -5,6 +5,7 @@ from ldpc_jossy.py import ldpc
 # from ldpc import *
 from util import *
 
+# TODO: when noise variance gets large, the operation for removing zero padding gets buggy
 
 def divide_codebits(input__bits,decode=False,N=1024,rate='1/2',r=0.5,z=27):
 
@@ -32,7 +33,7 @@ def divide_codebits(input__bits,decode=False,N=1024,rate='1/2',r=0.5,z=27):
     
     if decode:
         for j in range(len(input_bits)-1,-1,-1):
-            if abs(input_bits[j])>0.00001: #deal with zero padding
+            if abs(input_bits[j])>0.00001 and abs(input_bits[j-1])>0.00001 and abs(input_bits[j-2])>0.00001: #deal with zero padding
                 last_bit=j
                 print("last_bit:",last_bit)
                 break

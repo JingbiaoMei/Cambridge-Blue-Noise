@@ -36,10 +36,10 @@ def encode_bitstr2symbols(bits):
             if bit2=="0":
                 symbol=np.complex128(complex(1,1))
             else:
-                symbol=np.complex128(complex(-1,1))
+                symbol=np.complex128(complex(1,-1))
         else:
             if bit2=="0":
-                symbol=np.complex128(complex(1,-1))
+                symbol=np.complex128(complex(-1,1))
             else:
                 symbol=np.complex128(complex(-1,-1))
         symbols.append(symbol)
@@ -144,10 +144,10 @@ def decode_symbols_2_bitstring(symbols,channel_fft=False):
             if np.imag(element) >= 0:
                 data += '00'
             else:
-                data += '10'
+                data += '01'
         else:
             if np.imag(element) >= 0:
-                data += '01'
+                data += '10'
             else:
                 data += '11'
     return data

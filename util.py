@@ -69,6 +69,12 @@ def separate_real_img(complex_inputs):
         outputs.append(np.imag(i))
     return outputs
 
+
+def awgn(x, noise_var):
+    noise = np.sqrt(noise_var)*np.random.randn(len(x))
+    return np.add(x, noise)
+
+
 if __name__=='__main__':
     print(divide_bin_to_sizes(11,[5,6,2,8]))
 

@@ -49,23 +49,22 @@ if __name__=='__main__':
     # bin_strings=OFDMframes_to_bitstring(OFDM_frames,N,prefix_no)
 
     # --- Channel ---
-    var=1
+    data_transmitted=OFDM_frames
+    print("len(data_transmitted): ",len(data_transmitted))
+    # example of data_transmitted values: 0.063, -0.069, 0.04, 0.004, 0.023, 0.0064
+    var=0.001
 
-    #--- OFDM decoding---
-    ys=OFDMframes_to_y_float(OFDM_frames,N,prefix_no)
-    
-    # # llrs=llr(ys,var)
-    # ---for testing LDPC only--
-    # ys=[]
-    # for bit in LDPC_encoded_bits:
-    #     if bit=='1':
-    #         ys.append(-1.0)
-    #     else:
-    #         ys.append(1.0)
-    # ys=bitstr_to_np_array(LDPC_encoded_bits)
+    data_received=[]
+    for OFDM_block in OFDM_frames:
+        data_received.append(awgn(OFDM_block,var))
+    print("len(data_received): ",len(data_received))
+
+    #--- change into 1d array of ys---
+    ys_=OFDMframes_to_y_float(data_received,N,prefix_no)
+
     #-- LDPC decoding --
 
-    LDPC_decoded_bits= LDPC_decode(ys,var,N) #LDPC_coder.encode(bin_strings, dectype='sumprod2', corr_factor=0.7)
+    LDPC_decoded_bits= LDPC_decode(ys_,var,N) #LDPC_coder.encode(bin_strings, dectype='sumprod2', corr_factor=0.7)
     # len(LDPC_decoded_bits)=3296 compared to len(original bits)=2000.
     # len(LDPC_encoded_bits)=4056
 
