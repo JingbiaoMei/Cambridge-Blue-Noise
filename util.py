@@ -1,6 +1,8 @@
 import numpy as np
 import sys
 
+positive_infnity = float('inf')
+
 def divide_bin_to_sizes(N:int,sizes:list):
     # TODO: improve this algorithm
     """
@@ -69,12 +71,31 @@ def separate_real_img(complex_inputs):
         outputs.append(np.imag(i))
     return outputs
 
+def deci_to_binstr(number,total_len):
+    bin= format(number,'b')
+    pad=total_len-len(bin)
+    if pad>0:
+        return '0'*pad+bin
+    if pad<0:
+        raise ValueError("total_len not large enough to express number")
+    return bin
 
 def awgn(x, noise_var):
     noise = np.sqrt(noise_var)*np.random.randn(len(x))
     return np.add(x, noise)
 
+def binstr_to_deci(number):
+    base=1
+    deci=0
+    for i in range(len(number)-1,-1,-1):
+        deci+=int(number[i])*base
+        base*=2
+    return deci
 
 if __name__=='__main__':
-    print(divide_bin_to_sizes(11,[5,6,2,8]))
+    # print(deci_to_binstr(5))
+    print(type(deci_to_binstr(2,3)))
+    print(type(binstr_to_deci('110')))
+    print(deci_to_binstr(2,8))
+    print(binstr_to_deci(deci_to_binstr(2,8)))
 

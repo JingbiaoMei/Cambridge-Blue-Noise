@@ -7,6 +7,8 @@ from util import *
 
 # TODO: when noise variance gets large, the operation for removing zero padding gets buggy
 
+zero_padding_thresh=0.2
+
 def divide_codebits(input__bits,decode=False,N=1024,rate='1/2',r=0.5,z=27):
 
     """
@@ -17,6 +19,7 @@ def divide_codebits(input__bits,decode=False,N=1024,rate='1/2',r=0.5,z=27):
          rate: a str ('1/2' or '2/3' or '3/4' or '5/6')
          r: a float of rate
          z: an int (27 or 54 or 81)
+         inputLenIndicator_len: the length in front of info bit that indicates the length og info bits
 
      Returns:
          output_bits_r_z: array: [[[bits0],rate0,z0], [[bits1],rate1,z1], ...] 
@@ -24,6 +27,8 @@ def divide_codebits(input__bits,decode=False,N=1024,rate='1/2',r=0.5,z=27):
          -- note 'bits' can also be ys
     """
     input_bits=input__bits
+
+    
     if decode:
         k=z*24
     else:
@@ -32,26 +37,19 @@ def divide_codebits(input__bits,decode=False,N=1024,rate='1/2',r=0.5,z=27):
     output_bits_r_z=[]
     
     if decode:
-        for j in range(len(input_bits)-1,-1,-1):
-            if abs(input_bits[j])>0.00001 and abs(input_bits[j-1])>0.00001 and abs(input_bits[j-2])>0.00001: #deal with zero padding
-                last_bit=j
-                print("last_bit:",last_bit)
-                break
-        
-        while len(input_bits)>=k and len(input_bits)>=last_bit+1:
+        while len(input_bits)>0:
             output_bits_r_z.append([input_bits[:int(k)],rate,z])
             input_bits=input_bits[int(k):]
-            last_bit-=k
-        for i in range(0,last_bit,3):
-            ap=[input_bits[i],input_bits[i+1],input_bits[i+2]]
-            output_bits_r_z.append([ap,0,0])
-        
+            
     else:
-        while len(input_bits)>=k:
+        this_block_remain = k - len(input_bits)
+        while this_block_remain <= 0:
             output_bits_r_z.append([input_bits[:int(k)],rate,z])
             input_bits=input_bits[int(k):]
-        for i in input_bits:
-            output_bits_r_z.append([i,0,0])
+            this_block_remain = k - len(input_bits)
+        input_bits=input_bits+'0'*int(this_block_remain)
+        assert len(input_bits)==k
+        output_bits_r_z.append([input_bits,rate,z])
     
     return output_bits_r_z
 
@@ -99,12 +97,26 @@ def divide_codebits(input__bits,decode=False,N=1024,rate='1/2',r=0.5,z=27):
     # return output_bits_r_z
 
 
-def LDPC_encode(bits):
+def LDPC_encode(bits,inputLenIndicator_len=24,inputGuard_len=8,N=1024,rate='1/2',r=0.5,z=27):
     """
     bits: array of numbers. can be 1s and 0s, and also decimals (the y received)     
     returns [LDPCstr_coded, list of rzs]
     """
-    bits_r_zs=divide_codebits(bits)
+    input_bit_length=len(bits)
+    input_bit_length_bin=deci_to_binstr(input_bit_length,inputLenIndicator_len)
+    
+    add=''
+    for i in input_bit_length_bin:
+        if i=='0':
+            add+='0'
+        elif i=='1':
+            add+='1'
+        else:
+            raise ValueError
+    bits_with_indicator=add+bits
+    bits_with_indicator_and_guard=bits_with_indicator+'0'*inputGuard_len
+    assert len(bits_with_indicator_and_guard)==input_bit_length+inputLenIndicator_len+inputGuard_len
+    bits_r_zs=divide_codebits(bits_with_indicator_and_guard,decode=False,N=N,rate=rate,r=r,z=z)
 
     # LDPC_coded=[]
     LDPCstr_coded ='' 
@@ -120,22 +132,15 @@ def LDPC_encode(bits):
         if r!=0:
             
             LDPC_coder = ldpc.code(standard = '802.11n', rate = r, z=z, ptype='A')
-            # print('about to encode, bits length=',len(bits))
-            
-            # print("about to encode")
-            # print('K:',LDPC_coder.K)
-            # print('rate:',r)
-            # print('z:',z)
-            # print('standard:','802.11n')
-            # print('ptype:','A')
-            # print('u:',bits)
+
             coded=LDPC_coder.encode(bits)
             str_coded = ''
             for i in coded:
                 str_coded+=str(i)
             coded=str_coded
             
-        else: # use Hanning code
+        else: # use 
+            raise ValueError("should not come here")
             coded=str(bits[0])*3
             # print("coded:",coded)
         LDPCstr_coded+=coded
@@ -147,12 +152,13 @@ def LDPC_encode(bits):
 
 
 def llr(ys,var):
+    # TODO: channel estimate coeff
     """returns llr of ys.
     Var is the noise variance of the awgn channel
     """
     return (2.0**0.5)/var*ys
 
-def LDPC_decode(ys,var,N):
+def LDPC_decode(ys_,var,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24,inputGuard_len=8):
     """[summary]
 
     Args:
@@ -163,25 +169,53 @@ def LDPC_decode(ys,var,N):
     Returns:
         LDPCstr_decoded
     """
+    ys=ys_
     ys_r_zs=divide_codebits(ys,True,N)
+
+    encoded_block_length_k=z*24
 
     # LDPC_coded=[]
     LDPCstr_decoded ='' 
+    decoded_length_count=0
     for i in range(len(ys_r_zs)):
         ys_r_z=ys_r_zs[i]
         print("\r",end="")
         print("decoding {0}th LDPC block, {1} in total".format(i,len(ys_r_zs)),end="")
         sys.stdout.flush()
         ys=np.array(ys_r_z[0])
-        r=ys_r_z[1]
-        z=ys_r_z[2]
-        if r!=0:
-            LDPC_coder = ldpc.code(standard = '802.11n', rate = r, z=z, ptype='A')
-            # print("about to decode"); print('K:',LDPC_coder.K)
-            # print('rate:',r); print('z:',z)
-            # print('standard:','802.11n'); print('ptype:','A')
-            # # print('ys:',ys); 
-            # print('len(ys):',len(ys))
+        if i==0:
+            LDPC_coder = ldpc.code(standard = '802.11n', rate = rate, z=z, ptype='A')
+            llrs = llr(ys,var) 
+
+            # TODO: infinity after matrix multi with G matrix
+            # Ask Jossy?
+
+            # llrs[inputLenIndicator_len:inputLenIndicator_len+inputGuard_len] = np.array([positive_infnity]*(inputGuard_len))
+            # llrs[inputLenIndicator_len:inputGuard_len] = 
+            (app,nit)= LDPC_coder.decode(llrs)
+
+            transmitted=(app<0.0) # transmitted is np.array of Trues and Falses
+            # this is the LDPC encoded bits before awgn transmission
+
+
+            decoded=transmitted[:int(len(transmitted)/2)]
+            str_decoded = ''
+            for i in decoded:
+                str_decoded+=str(int(i))
+            decoded=str_decoded[int(inputLenIndicator_len):]
+            total_length= binstr_to_deci( str_decoded[:int(inputLenIndicator_len)])/r
+            
+            total_length=int(total_length)
+            print("\ntotal_length: ",total_length)
+            decoded_length_count+=encoded_block_length_k - inputLenIndicator_len
+
+        elif decoded_length_count+encoded_block_length_k<total_length:
+
+            if i==len(ys_r_zs)-1:
+                raise ValueError("last block not detected")
+
+            LDPC_coder = ldpc.code(standard = '802.11n', rate = rate, z=z, ptype='A')
+
             llrs = llr(ys,var) # TODO: check
             (app,nit)= LDPC_coder.decode(llrs)
 
@@ -194,22 +228,40 @@ def LDPC_decode(ys,var,N):
             for i in decoded:
                 str_decoded+=str(int(i))
             decoded=str_decoded
-            
-        else: # use Hanning code
-            # decoded = 
-            zeros=0
-            ones=0
-            for i in ys:
-                if i>0.5:
-                    ones+=1
-                else:
-                    zeros+=1
-            if ones>=2:
-                decoded='1'
-            elif zeros>=2:
-                decoded='0'
-            else:
-                raise ValueError
-        LDPCstr_decoded+=decoded
 
-    return LDPCstr_decoded
+            decoded_length_count+=encoded_block_length_k
+
+        else: #last block that contain information, doesn't have to be last OFDM block (OFDM has paddings as well)
+            # if i!=len(ys_r_zs)-1:
+            #     raise ValueError("not last block")
+            LDPC_coder = ldpc.code(standard = '802.11n', rate = rate, z=z, ptype='A')
+            llrs = llr(ys,var) # TODO: check
+            llrs=llrs[:total_length-decoded_length_count]
+            padding=np.array([positive_infnity]*(encoded_block_length_k-(total_length-decoded_length_count)))
+            llrs=np.concatenate([llrs,padding])
+
+            assert len(llrs)==encoded_block_length_k
+        
+            (app,nit)= LDPC_coder.decode(llrs)
+
+            transmitted=(app<0.0) # transmitted is np.array of Trues and Falses
+            # this is the LDPC encoded bits before awgn transmission
+
+
+            decoded=transmitted[:int(len(transmitted)/2)]
+            str_decoded = ''
+            for i in decoded:
+                str_decoded+=str(int(i))
+            decoded=str_decoded
+
+            decoded_length_count+=encoded_block_length_k
+
+            LDPCstr_decoded+=decoded
+
+
+            return LDPCstr_decoded[:int(total_length*r)]
+            
+        LDPCstr_decoded+=decoded
+    
+    raise ValueError("should not execute to this line")
+    # return LDPCstr_decoded

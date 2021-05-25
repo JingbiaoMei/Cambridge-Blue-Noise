@@ -28,13 +28,13 @@ from sys import stdout
 
 if __name__=='__main__':
 
-    filename='input_small.png'
+    filename='input.png'
     bits=file_to_bitstr(filename) #[:2000]
     print('input file length:',len(bits))
 
 
     # ------ LDPC encode ------
-    LDPC_encoded_bits=LDPC_encode(bits)
+    LDPC_encoded_bits=LDPC_encode(bits,inputLenIndicator_len=24,inputGuard_len=8,N=1024,rate='1/2',r=0.5,z=27)
     print('\nlen(LDPC_encoded_bits)',len(LDPC_encoded_bits))
     
     # ------ QPSK encode ------
@@ -52,23 +52,28 @@ if __name__=='__main__':
     data_transmitted=OFDM_frames
     print("len(data_transmitted): ",len(data_transmitted))
     # example of data_transmitted values: 0.063, -0.069, 0.04, 0.004, 0.023, 0.0064
-    var=0.001
+    var=0.00005
 
     data_received=[]
     for OFDM_block in OFDM_frames:
         data_received.append(awgn(OFDM_block,var))
     print("len(data_received): ",len(data_received))
-
+    # data_received=OFDM_frames
     #--- change into 1d array of ys---
     ys_=OFDMframes_to_y_float(data_received,N,prefix_no)
+    ys_OFDM_frames=OFDMframes_to_y_float(OFDM_frames,N,prefix_no)
 
     #-- LDPC decoding --
 
-    LDPC_decoded_bits= LDPC_decode(ys_,var,N) #LDPC_coder.encode(bin_strings, dectype='sumprod2', corr_factor=0.7)
+    print('len(ys_):', len(ys_)) 
+    assert len(ys_)>=len(data_transmitted)
+    LDPC_decoded_bits= LDPC_decode(ys_,var,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24,inputGuard_len=8) #LDPC_coder.encode(bin_strings, dectype='sumprod2', corr_factor=0.7)
     # len(LDPC_decoded_bits)=3296 compared to len(original bits)=2000.
     # len(LDPC_encoded_bits)=4056
 
     print('\noutput file length:',len(LDPC_decoded_bits))
+    print('\ninput file length:',len(bits))
+    assert len(LDPC_decoded_bits)==len(bits)
     bitstr_to_file(LDPC_decoded_bits,'OFDM_output.png')
 
     print("hi")
