@@ -94,7 +94,8 @@ def OFDMframes_to_bitstring(OFDM_frames,N,prefix_no,channel_fft=False):
     for i in range(len(OFDM_frames)):
         frame_prefix = OFDM_frames[i][prefix_no:] # remove cp
         frame_dft = np.fft.fft(frame_prefix, n=N) 
-        if channel_fft:
+        # For array use .any()
+        if channel_fft.any():
             bits+=decode_symbols_2_bitstring(frame_dft[1:int(N/2)],channel_fft[1:int(N/2)])
         else:
             bits+=decode_symbols_2_bitstring(frame_dft[1:int(N/2)])
@@ -120,7 +121,7 @@ def OFDMframes_to_constellation(OFDM_frames,N,prefix_no,channel_fft=False):
 def decode_symbols_2_bitstring(symbols,channel_fft=False):
     data = ''
     for i in range(len(symbols)):
-        if channel_fft:
+        if channel_fft.any():
             element=symbols[i]/ channel_fft[i]
         else:
             element=symbols[i]
@@ -153,7 +154,7 @@ def bitstr_to_file(bin_strings,filename,cut=0):
 
 
 if __name__=='__main__':
-    filename='chirp_lin_combined.wav'
+    filename='test.tiff'
     bits=file_to_bitstr(filename)
     symbols=encode_bitstr2symbols(bits)
     print(np.shape(symbols))
@@ -165,4 +166,4 @@ if __name__=='__main__':
     bin_strings=OFDMframes_to_bitstring(OFDM_frames,N,prefix_no)
     print(len(bin_strings)/2)
     # bin_strings=decode_symbols_2_bitstring(symbols)
-    bitstr_to_file(bin_strings,'rec_chirp_lin_combined.wav')
+    bitstr_to_file(bin_strings,'decode.tiff')
