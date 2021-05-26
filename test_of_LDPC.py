@@ -1,3 +1,4 @@
+from numpy import Infinity
 from QAM_EncoderDecoder import *
 # from LDPC import *
 from ldpc_jossy.py import ldpc
@@ -26,9 +27,9 @@ from sys import stdout
 #     return output_bits_r_z
 
 
-if __name__=='__main__':
+def onetest(snr):
 
-    filename='input.png'
+    filename='input_small.png'
     bits=file_to_bitstr(filename) #[:2000]
     print('input file length:',len(bits))
 
@@ -56,7 +57,7 @@ if __name__=='__main__':
     
     # example of data_transmitted values: 0.063, -0.069, 0.04, 0.004, 0.023, 0.0064
     # var=0.001
-    snr=2
+    # snr=1.8
 
     print("\nsnr:", snr)
 
@@ -70,7 +71,6 @@ if __name__=='__main__':
     # data_received=OFDM_frames
     #--- change into 1d array of ys---
     ys_=OFDMframes_to_y_float(data_received,N,prefix_no)
-    ys_OFDM_frames=OFDMframes_to_y_float(OFDM_frames,N,prefix_no)
 
     #-- LDPC decoding --
 
@@ -83,13 +83,24 @@ if __name__=='__main__':
     print('\noutput file length:',len(LDPC_decoded_bits))
 
 
-    len_min=min(len(LDPC_decoded_bits),len(LDPC_encoded_bits))
+    len_min=min(len(LDPC_decoded_bits),len(bits))
 
-    biterrors = np.sum(LDPC_decoded_bits[:len_min] != LDPC_decoded_bits[:len_min] )
+    biterrors = np.sum(LDPC_decoded_bits[:len_min] != bits[:len_min] )
     print("\nbiterrors:",biterrors)
 
-    print('\ninput file length:',len(bits))
-    assert len(LDPC_decoded_bits)==len(bits)
-    bitstr_to_file(LDPC_decoded_bits,'OFDM_output.png')
+    return biterrors
 
-    print("hi")
+errors=[]
+snrs=[]
+for snr in range(12,20,1):
+    snr=snr/10
+    try:
+        error=onetest(snr)
+    except:
+        error=200000
+    errors.append(error)
+    snrs.append(snr)
+
+import matplotlib.pyplot as plt
+plt.plot(snrs,errors)
+plt.show()

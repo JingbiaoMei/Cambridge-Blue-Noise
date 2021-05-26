@@ -264,4 +264,5 @@ def LDPC_decode(ys_,var,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24,inputGu
         LDPCstr_decoded+=decoded
     
     raise ValueError("should not execute to this line")
+    return LDPCstr_decoded[:int(total_length*r)]
     # return LDPCstr_decoded
