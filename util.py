@@ -63,12 +63,12 @@ def bitstr_to_np_array(bitstr):
     return np.array(array)
 
 def separate_real_img(complex_inputs):
-    """returns [input0.real, input0.img, input1.real, input1.img, ...]
+    """returns [input0.img,input0.real, input1.img, input1.real,  ...]
     """
     outputs=[]
     for i in complex_inputs:
-        outputs.append(np.real(i))
         outputs.append(np.imag(i))
+        outputs.append(np.real(i))
     return outputs
 
 def deci_to_binstr(number,total_len):

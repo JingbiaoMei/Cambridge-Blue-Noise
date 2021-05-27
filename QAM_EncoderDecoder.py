@@ -36,10 +36,10 @@ def encode_bitstr2symbols(bits):
             if bit2=="0":
                 symbol=np.complex128(complex(1,1))
             else:
-                symbol=np.complex128(complex(1,-1))
+                symbol=np.complex128(complex(-1,1))
         else:
             if bit2=="0":
-                symbol=np.complex128(complex(-1,1))
+                symbol=np.complex128(complex(1,-1))
             else:
                 symbol=np.complex128(complex(-1,-1))
         symbols.append(symbol)
@@ -107,7 +107,7 @@ def OFDMframes_to_bitstring(OFDM_frames,N,prefix_no,channel_fft=False):
 def OFDMframes_to_y_float(OFDM_frames,N,prefix_no,):
     """inputs:
         OFDM_frames: 2d np.array
-    returns 1d array [[OFDMframe0_0_real,OFDMframe0_0_img,OFDMframe0_1_real,...],[OFDMframe1_0_real,...],...]
+    returns 1d array [[OFDMframe0_0_img, OFDMframe0_0_real, OFDMframe0_1_img,...],[OFDMframe1_0_img,...],...]
     """
     print("about to do OFDMframes_to_y_float decoding")
     ys=[]
@@ -144,10 +144,10 @@ def decode_symbols_2_bitstring(symbols,channel_fft=False):
             if np.imag(element) >= 0:
                 data += '00'
             else:
-                data += '01'
+                data += '10'
         else:
             if np.imag(element) >= 0:
-                data += '10'
+                data += '01'
             else:
                 data += '11'
     return data

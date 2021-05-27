@@ -28,7 +28,7 @@ from sys import stdout
 
 if __name__=='__main__':
 
-    filename='input.png'
+    filename='input_small.png'
     bits=file_to_bitstr(filename) #[:2000]
     print('input file length:',len(bits))
 
@@ -70,13 +70,15 @@ if __name__=='__main__':
     # data_received=OFDM_frames
     #--- change into 1d array of ys---
     ys_=OFDMframes_to_y_float(data_received,N,prefix_no)
-    ys_OFDM_frames=OFDMframes_to_y_float(OFDM_frames,N,prefix_no)
+    # ys_OFDM_frames=OFDMframes_to_y_float(OFDM_frames,N,prefix_no)
 
     #-- LDPC decoding --
 
+    cks=[var]*512
+
     print('len(ys_):', len(ys_)) 
     assert len(ys_)>=len(data_transmitted)
-    LDPC_decoded_bits= LDPC_decode(ys_,var,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24,inputGuard_len=8) #LDPC_coder.encode(bin_strings, dectype='sumprod2', corr_factor=0.7)
+    LDPC_decoded_bits= LDPC_decode(ys_,var,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24,inputGuard_len=8,cks=cks) #LDPC_coder.encode(bin_strings, dectype='sumprod2', corr_factor=0.7)
     # len(LDPC_decoded_bits)=3296 compared to len(original bits)=2000.
     # len(LDPC_encoded_bits)=4056
 
