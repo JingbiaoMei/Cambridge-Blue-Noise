@@ -1,5 +1,4 @@
 from os import name
-from bitarray import bitarray
 import numpy as np
 from util import *
 
@@ -154,18 +153,6 @@ def decode_symbols_2_bitstring(symbols,channel_fft=False):
     return data
 
 
-def bitstr_to_file(bin_strings,filename,cut=0):
-    """
-    Args:
-        bin_strings ([str]): 
-        filename ([str]): 
-        cut (int, optional): [the length of information that you want to cut out at the start]. Defaults to 0.
-    """
 
-    data_bytes = bitarray(bin_strings)
-
-    with open(filename, 'wb') as f:
-        f.write(data_bytes.tobytes()[cut:])
-    print("bitstr written to ",filename)
 
 

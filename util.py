@@ -1,7 +1,49 @@
 import numpy as np
 import sys
+from bitarray import bitarray
 
 positive_infnity = float('inf')
+
+def bitstr_to_file(bin_strings,filename,cut=0):
+    """
+    Args:
+        bin_strings ([str]): 
+        filename ([str]): 
+        cut (int, optional): [the length of information that you want to cut out at the start]. Defaults to 0.
+    """
+
+    data_bytes = bitarray(bin_strings)
+
+    with open(filename, 'wb') as f:
+        f.write(data_bytes.tobytes()[cut:])
+    print("bitstr written to ",filename)
+
+def repetitive_decode_str2str(encodedbits,repeatTimes=3):
+    decoded_bits=''
+    for i in range(0,len(encodedbits),repeatTimes):
+        zeros=0
+        ones=0
+        for j in range(repeatTimes):
+            if encodedbits[i+j]=='0':
+                zeros+=1
+            elif encodedbits[i+j]=='1':
+                ones+=1
+            else:
+                raise ValueError
+        
+        assert zeros+ones == repeatTimes
+
+        if zeros>ones:
+            decoded_bits+='0'
+        elif zeros<ones:
+            decoded_bits+='1'
+        else:
+            raise ValueError
+        
+        if zeros>0 and ones>0:
+            print("------error corrected-------")
+
+    return decoded_bits
 
 def divide_bin_to_sizes(N:int,sizes:list):
     # TODO: improve this algorithm
@@ -94,8 +136,5 @@ def binstr_to_deci(number):
 
 if __name__=='__main__':
     # print(deci_to_binstr(5))
-    print(type(deci_to_binstr(2,3)))
-    print(type(binstr_to_deci('110')))
-    print(deci_to_binstr(2,8))
-    print(binstr_to_deci(deci_to_binstr(2,8)))
+    repetitive_decode_str2str('001 110 111 000 110 001 101 010',3)
 
