@@ -6,7 +6,7 @@ import sounddevice as sd
 import soundfile as sf
 from IPython.display import Audio
 from scipy import interpolate
-
+import os
 
 
 
@@ -68,7 +68,7 @@ class OFDM():
 
         return symbols
 
-    def known_OFDM_frame(self,symbols):
+    def known_OFDM_frame(self, symbols):
         """Takes N//2 symbols and returns single real OFDM frame"""
         
         block = [0]
@@ -84,7 +84,7 @@ class OFDM():
         return frame
     
     #### Pilot symbols TOdo
-    def OFDM_symbol(QPSK_payload):
+    def OFDM_symbol(self, QPSK_payload):
         """Assigns pilot values and payload values to OFDM symbol, take reverse complex conjugate and append to end to make signal passband"""
         
         symbol = np.zeros(K, dtype=complex) # the overall K subcarriers
@@ -95,10 +95,10 @@ class OFDM():
         return symbol
         
 
-    def tx_waveform(frame, chirp, repeats, pilots=False, pilot_frame = []):
+    def tx_waveform(self, frame, chirp, repeats, pilots=False, pilot_frame = []):
         """Returns chirp/s with repeated OFDM frame, and length of known frames"""
         
-        gap = int(1 * fs)
+        gap = int(1 * self.fs)
         frames = np.tile(frame, repeats)
         if not pilots:
             waveform = np.concatenate((np.zeros(gap), chirp, frames, np.zeros(gap)), axis=None)
@@ -107,14 +107,14 @@ class OFDM():
         
         return waveform, repeats
 
-    def tx_waveform_data(frame, chirp, repeats, filename):
+    def tx_waveform_data(self, frame, chirp, repeats, filename):
         
-        gap = int(1*fs)
+        gap = int(1 * self.fs)
         frames = np.tile(frame, repeats)
 
         bits_tran = file_to_bitstr(filename)
         symbols_tran = encode_bitstr2symbols(bits_tran)
-        data_tran = symbol_to_OFDMframes(symbols_tran,N,prefix_no)
+        data_tran = symbol_to_OFDMframes(symbols_tran, self.N, self.prefix_no)
         data_tran = np.real(data_tran)
         data_length = data_tran.shape[0]*data_tran.shape[1]
         waveform = np.concatenate((np.zeros(gap), chirp, frames, data_tran, np.zeros(gap)), axis=None)
@@ -123,7 +123,7 @@ class OFDM():
 
 
 
-    def ideal_channel_response(signal):
+    def ideal_channel_response(self, signal):
         """Returns channel output for tx signal"""
         
         channel = np.genfromtxt('channel.csv',delimiter=',')
@@ -131,16 +131,16 @@ class OFDM():
         
         return channel_op
 
-    def real_channel_response(signal):
+    def real_channel_response(self, signal):
         """Records and returns rx signal after writing to file"""
         
         print("Recording")
-        wait_time = np.ceil(len(signal)/fs) + 1
+        wait_time = np.ceil(len(signal)/self.fs) + 1
 
-        recording = sd.rec(int(wait_time * fs), samplerate=fs, channels=1)
+        recording = sd.rec(int(wait_time * self.fs), samplerate=self.fs, channels=1)
         sd.wait()
 
-        sf.write('sound_files/sync_long_rec.wav', recording, fs)
+        sf.write('sound_files/sync_long_rec.wav', recording, self.fs)
 
         print("Finished")
         recording = recording[:, 0]
@@ -148,7 +148,7 @@ class OFDM():
         return recording  
 
 
-    def matched_filter(signal, match):
+    def matched_filter(self, signal, match):
         """Returns convolution of signal with matched filter and its peak index"""
         
         convolution = np.convolve(signal, match)
@@ -158,14 +158,14 @@ class OFDM():
 
 
 
-    def process_transmission(signal, start, repeats, offset=0):
+    def process_transmission(self, signal, start, repeats, offset=0):
         """Returns trimmed and averaged known OFDM symbol"""
         
         start += offset
-        length = repeats * N
+        length = repeats * self.N
         trimmed_frames = signal[start:start+length]
         split_frames = np.split(trimmed_frames, repeats)
-        average_frame = np.zeros(N)
+        average_frame = np.zeros(self.N)
         for frame in split_frames:
             average_frame = np.add(average_frame, frame)
         average_frame /= (repeats)
@@ -174,16 +174,16 @@ class OFDM():
 
 
 
-    def estimate_channel_response(frame, known_frame):
+    def estimate_channel_response(self, frame, known_frame):
         """Returns time and frequency channel impulse response from known OFDM symbols"""
         
         known_symbols = np.fft.fft(known_frame)
         
-        OFDM_frame = np.fft.fft(frame, N)
+        OFDM_frame = np.fft.fft(frame, self.N)
         channel_freq_response = OFDM_frame / known_symbols
-        channel_freq_response[N//2] = 0 # avoid NaN error. error when not all bins filled, needs a fix
+        channel_freq_response[self.N // 2] = 0 # avoid NaN error. error when not all bins filled, needs a fix
         
-        channel_imp_response = np.fft.ifft(channel_freq_response, N)
+        channel_imp_response = np.fft.ifft(channel_freq_response, self.N)
         channel_imp_response = np.real(channel_imp_response)
         
         return channel_freq_response, channel_imp_response
@@ -200,6 +200,16 @@ class OFDM():
 
 
 
+def bitrate(file, audio, fs):
+    '''
+    file: file path
+    audio: audio numpy array
+    fs: sampling frequency
+    '''
+    size_byte = os.stat(file).st_size
+    audio_length = len(audio) / fs
+    rate = size_byte * 8 / audio_length / 1024
+    print('bitrate of the system is:', str.format('{0:.2f}', rate), 'Kbits/s')
 
 
 
