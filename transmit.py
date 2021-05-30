@@ -1,11 +1,10 @@
 import numpy as np
 from QAM_EncoderDecoder import *
 from scipy.io.wavfile import write, read
-#import matplotlib.pyplot as plt
 import sounddevice as sd
 import soundfile as sf
-from IPython.display import Audio
-from scipy import interpolate
+#from IPython.display import Audio
+#from scipy import interpolate
 import os
 from pydub import AudioSegment
 
@@ -49,7 +48,7 @@ def impulse_score(impulse):
 class OFDM():
 
     # Initialize parameters
-    def __init__(self, N, prefix_no, fs, repeat, gap_second):
+    def __init__(self, N, prefix_no, fs, repeat, gap_second, seed = 2021):
         # DFT length
         self.N = N
 
@@ -64,6 +63,10 @@ class OFDM():
 
         # Gap in between different signals
         self.gap = gap_second * self.fs
+
+        # Random seeds standardised across teams
+        self.seed = seed
+
 
     # Random symbol for channel estimation
     def generate_random_symbols(self):
@@ -94,6 +97,22 @@ class OFDM():
         symbols = full_symbols[:self.N//2-1]
 
         return symbols
+
+    def generate_random_symbols_seeds(self):
+        rng = np.random.default_rng(self.seed)
+        length_random_sequence = self.N//2 -1
+        random_sequence = rng.integers(low=0, high=4, size=length_random_sequence)
+
+        mapping = {
+            0:  1+1j,
+            1: -1+1j,
+            2: -1-1j,
+            3:  1-1j
+        }
+
+        random_symbols = [mapping[r] for r in random_sequence]
+        return random_symbols
+
 
     def known_OFDM_frame(self, symbols):
         """Takes N//2 symbols and returns single real OFDM frame"""
@@ -158,17 +177,6 @@ class OFDM():
 
         return chirp, inv_chirp
 
-    # Pilot symbols TOdo
-
-    def OFDM_symbol(self, QPSK_payload):
-        """Assigns pilot values and payload values to OFDM symbol, take reverse complex conjugate and append to end to make signal passband"""
-
-        symbol = np.zeros(self.K, dtype=complex)  # the overall K subcarriers
-        symbol[pilotCarriers] = pilotValue  # allocate the pilot subcarriers
-        symbol[dataCarriers] = QPSK_payload  # allocate the data subcarriers
-        symbol = np.append(symbol, np.append(0, np.conj(symbol)[:0:-1]))
-
-        return symbol
 
     def tx_waveform(self, frame, chirp,  pilots=False, pilot_frame=[]):
         """Returns chirp/s with repeated OFDM frame, and length of known frames"""
@@ -197,6 +205,22 @@ class OFDM():
 
         return waveform, data_length, bits_tran
 
+    def tx_waveform_data_pilot(self, frame, chirp, filename):
+
+        frames = np.tile(frame, self.repeat)
+
+        bits_tran = file_to_bitstr(filename)
+        symbols_tran = encode_bitstr2symbols(bits_tran)
+        data_tran = symbol_to_OFDMframes(symbols_tran, self.N, self.prefix_no)
+        data_tran = np.real(data_tran)
+        data_length = data_tran.shape[0]*data_tran.shape[1]
+        waveform = np.concatenate(
+            (np.zeros(self.gap), chirp, frames, data_tran, np.zeros(self.gap)), axis=None)
+
+        return waveform, data_length, bits_tran
+
+    
+
     def ideal_channel_response(self, signal):
         """Returns channel output for tx signal"""
 
@@ -205,7 +229,7 @@ class OFDM():
 
         return channel_op
 
-    def real_channel_response(self, signal):
+    def real_channel_response(self, signal, filename='sound_files/sync_long_rec.wav'):
         """Records and returns rx signal after writing to file"""
 
         print("Recording")
@@ -215,7 +239,7 @@ class OFDM():
                            samplerate=self.fs, channels=1)
         sd.wait()
 
-        sf.write('sound_files/sync_long_rec.wav', recording, self.fs)
+        sf.write(filename, recording, self.fs)
 
         print("Finished")
         recording = recording[:, 0]
@@ -236,6 +260,15 @@ class OFDM():
         peak_index = np.argmax(convolution[0:len(convolution//2)])
 
         return convolution, peak_index
+
+    def matched_filter_double(self, signal, match):
+        """Returns convolution of signal with matched filter and its peak index"""
+    
+        convolution = np.convolve(signal, match)
+        peak_index1 = np.argmax(np.abs(convolution[:len(convolution)//2])) # check 1st half of signal
+        peak_index2 = np.argmax(np.abs(convolution[len(convolution)//2:])) + len(convolution)//2 # check 2nd half of signal
+    
+        return convolution, peak_index1, peak_index2
 
     def find_start(self, peak):
         ''' 
@@ -263,6 +296,26 @@ class OFDM():
 
         return average_frame, start_refined
 
+
+    def process_transmission_pilot(self, signal, start, offset=0):
+    
+        start -= offset
+        # Here with cyclic prefix
+        length = self.repeat * (self.N + self.prefix_no)
+        trimmed_frames = signal[start:start+length]
+        split_frames = np.split(trimmed_frames, length/(self.N+self.prefix_no))
+        
+        average_frame = np.zeros(self.N+self.prefix_no)
+        for frame in split_frames:     
+            average_frame = np.add(average_frame, frame)
+        average_frame /= (length/(self.N+self.prefix_no))
+        
+        # Keep a record for the refined starting point with the offset
+        start_refined = start
+
+
+        return split_frames, average_frame, start_refined
+
     def estimate_channel_response(self, frame, known_frame):
         """Returns time and frequency channel impulse response from known OFDM symbols"""
 
@@ -276,6 +329,25 @@ class OFDM():
         channel_imp_response = np.fft.ifft(channel_freq_response, self.N)
         channel_imp_response = np.real(channel_imp_response)
 
+        return channel_freq_response, channel_imp_response
+
+
+
+    def estimate_channel_response_pilot(self, frame, known_frame):
+        """Returns time and frequency channel impulse response from known OFDM symbols"""
+        
+        known_frame = known_frame[self.prefix_no:]
+        frame = frame[self.prefix_no:] 
+        
+        known_symbols = np.fft.fft(known_frame, self.N)
+        OFDM_symbol = np.fft.fft(frame, self.N)
+        
+        channel_freq_response = OFDM_symbol / known_symbols
+        channel_freq_response[self.N//2] = 0 # avoid NaN error. error when not all bins filled, needs a fix
+        channel_freq_response[0] = 0
+        channel_imp_response = np.fft.ifft(channel_freq_response, self.N)
+        channel_imp_response = np.real(channel_imp_response)
+        
         return channel_freq_response, channel_imp_response
 
     def retrieve_info(self, signal, start_refined):
@@ -365,3 +437,120 @@ class OFDM():
             information, self.N, self.prefix_no, freq_response)
 
         return best_offset, best_score, bits_rec, best_imp_response
+
+
+    # <-------- Pilot Symbols --------->
+    def data_to_OFDM(self, filename):
+    
+        bits_tran = file_to_bitstr(filename)
+        symbols_tran = encode_bitstr2symbols(bits_tran)
+        data_tran = symbol_to_OFDMframes(symbols_tran, self.N, self.prefix_no)
+        data_tran = np.real(data_tran)
+        
+        return data_tran
+
+    def data_add_pilots(self,  filename):
+        
+    
+        rng = np.random.default_rng(self.seed)
+        length_random_sequence = self.N//2 # need 511 extra symbols
+        random_sequence = rng.integers(low=0, high=4, size=length_random_sequence)
+
+        mapping = {
+            0:  1+1j,
+            1: -1+1j,
+            2: -1-1j,
+            3:  1-1j}
+
+        frequency_filler = [mapping[r] for r in random_sequence]
+
+        
+        
+        K = self.N//4 # so 512 info bins, might reduce in future
+        P = K // 16
+        pilotValue = 1 + 1j
+        
+        allCarriers = np.arange(K)  # indices of all subcarriers ([0, 1, ... K-1])
+        pilotCarriers = allCarriers[1::K//P] # Pilots are every (K//P)th carrier.
+        dataCarriers = np.delete(allCarriers, pilotCarriers)
+        dataCarriers = np.delete(dataCarriers, [0])
+        
+        data_bits = file_to_bitstr(filename)
+        data_symbols= encode_bitstr2symbols(data_bits)
+
+        carriers_required = int(np.ceil(len(data_symbols)/len(dataCarriers)))
+        excess = int(len(dataCarriers) * carriers_required) - len(data_symbols)
+        data_symbols = np.append(data_symbols, frequency_filler[:excess])
+        print(carriers_required, excess, len(data_symbols), len(dataCarriers))
+
+        OFDM_frames = []
+        for i in range(0, carriers_required*len(dataCarriers), len(dataCarriers)):
+            
+            OFDM_symbol = np.zeros(K, dtype=complex) # the overall K subcarriers
+            OFDM_symbol[pilotCarriers] = pilotValue  # allocate the pilot subcarriers
+            OFDM_symbol[dataCarriers] = data_symbols[i:i+len(dataCarriers)]  # allocate the data subcarriers  
+            OFDM_symbol = np.append(OFDM_symbol, frequency_filler[:self.N//2-K])
+            OFDM_symbol = np.append(OFDM_symbol, np.append(0,np.conj(OFDM_symbol)[:0:-1]))
+            OFDM_symbol = np.fft.ifft(OFDM_symbol)
+            OFDM_symbol = np.append(OFDM_symbol[self.N-self.prefix_no:self.N], OFDM_symbol)   
+            OFDM_symbol = np.real(OFDM_symbol)
+            OFDM_frames.append(OFDM_symbol)   
+            
+        return OFDM_frames, [allCarriers, pilotCarriers, dataCarriers], data_bits
+
+    def data_remove_pilots(self, all_frames, carrier_indices, channel_fft, filename=None):
+        
+        pilot_indices = carrier_indices[1]
+        data_indices = carrier_indices[2]
+        
+        pilot_symbols = []
+        data_symbols = []
+        bits = ""
+        for i in range(len(all_frames)):
+            
+            frame_no_cp = all_frames[i][self.prefix_no:]
+            frame_dft = np.fft.fft(frame_no_cp)
+
+            pilots = frame_dft[pilot_indices]
+            data = frame_dft[data_indices]
+            
+            bits+=decode_symbols_2_bitstring(data, channel_fft[data_indices])
+            
+            pilot_symbols.append(pilots)
+            data_symbols.append(data)
+        
+        if filename:
+            bitstr_to_file(bits, filename)
+        
+        return data_symbols, pilot_symbols, bits
+
+    def data_remove_pilots_correct_phase(self, all_frames, carrier_indices, channel_fft, filename):
+    
+        pilot_indices = carrier_indices[1]
+        data_indices = carrier_indices[2]
+        
+        pilot_symbols = []
+        data_symbols = []
+        bits = ""
+        for i in range(len(all_frames)):
+            
+            frame_no_cp = all_frames[i][self.prefix_no:]
+            frame_dft = np.fft.fft(frame_no_cp)
+
+            pilots = frame_dft[pilot_indices]
+            data = frame_dft[data_indices]
+            
+            pilots_phase = np.unwrap(np.angle(pilots / channel_fft[carrier_indices[1]])) # very basic linear correction of phase
+            phase_adjustment = np.polyfit(carrier_indices[1], pilots_phase, 1)[0]
+            
+            pilots *=  np.exp(-1j*phase_adjustment*carrier_indices[1])
+            data *=  np.exp(-1j*phase_adjustment*carrier_indices[2])
+            
+            bits+=decode_symbols_2_bitstring(data, channel_fft[data_indices])
+            
+            pilot_symbols.append(pilots)
+            data_symbols.append(data)
+        
+        bitstr_to_file(bits, filename)
+        
+        return data_symbols, pilot_symbols, bits
