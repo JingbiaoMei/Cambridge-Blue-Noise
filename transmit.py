@@ -34,8 +34,8 @@ def bitrate(file, audio, fs):
 
 def impulse_score(impulse):
     # The input impulse should be normalised (Minus its initial mean)
-    initial_no = 80
-    last_no = 80
+    initial_no = 50
+    last_no = 100
     impulse = np.real(impulse)
     impulse = impulse - np.average(impulse)
     score = np.average(np.abs(impulse[0:initial_no])) / \
@@ -158,6 +158,12 @@ class OFDM():
         frame = OFDM_frames[0]
         return frame
 
+    def generate_known_OFDM(self, symbols):
+        known_frame = symbol_to_OFDMframes(symbols, self.N, self.prefix_no)[0]
+        known_frames = np.tile(known_frame, self.repeat)
+        return known_frame, known_frames
+
+
     # Chirp
     def define_chirp(self):
         """returns standard log chirp waveform and its time-reverse"""
@@ -177,20 +183,6 @@ class OFDM():
 
         return chirp, inv_chirp
 
-
-    def tx_waveform(self, frame, chirp,  pilots=False, pilot_frame=[]):
-        """Returns chirp/s with repeated OFDM frame, and length of known frames"""
-
-        frames = np.tile(frame, self.repeat)
-        if not pilots:
-            waveform = np.concatenate(
-                (np.zeros(self.gap), chirp, frames, np.zeros(self.gap)), axis=None)
-        else:
-            waveform = np.concatenate((np.zeros(self.gap), chirp, frames, np.zeros(
-                self.gap), chirp, np.zeros(self.gap), pilot_frame, np.zeros(self.gap)), axis=None)
-
-        return waveform
-
     def tx_waveform_data(self, frame, chirp, filename):
 
         frames = np.tile(frame, self.repeat)
@@ -205,19 +197,16 @@ class OFDM():
 
         return waveform, data_length, bits_tran
 
-    def tx_waveform_data_pilot(self, frame, chirp, filename):
+    def tx_waveform_data_pilot(self, known_frames, chirp, data_frames):
+        """
+        Return the tx signal for the pilot version
+        """
 
-        frames = np.tile(frame, self.repeat)
+        gap = self.gap
+        tx_signal = np.concatenate((np.zeros(gap), chirp, known_frames, np.zeros(gap), data_frames, np.zeros(gap), chirp, np.zeros(gap)), axis=None)
+        tx_signal = np.real(tx_signal)
 
-        bits_tran = file_to_bitstr(filename)
-        symbols_tran = encode_bitstr2symbols(bits_tran)
-        data_tran = symbol_to_OFDMframes(symbols_tran, self.N, self.prefix_no)
-        data_tran = np.real(data_tran)
-        data_length = data_tran.shape[0]*data_tran.shape[1]
-        waveform = np.concatenate(
-            (np.zeros(self.gap), chirp, frames, data_tran, np.zeros(self.gap)), axis=None)
-
-        return waveform, data_length, bits_tran
+        return tx_signal
 
     
 
@@ -396,6 +385,9 @@ class OFDM():
         error = error_rate(bits_tran, bits_rec)
         return error, score
 
+
+    
+
     def fine_tune(self, signal, start, known_frame, find_range, offset=20):
         score_list = []
         offset_list = []
@@ -463,8 +455,6 @@ class OFDM():
             3:  1-1j}
 
         frequency_filler = [mapping[r] for r in random_sequence]
-
-        
         
         K = self.N//4 # so 512 info bins, might reduce in future
         P = K // 16
@@ -481,7 +471,6 @@ class OFDM():
         carriers_required = int(np.ceil(len(data_symbols)/len(dataCarriers)))
         excess = int(len(dataCarriers) * carriers_required) - len(data_symbols)
         data_symbols = np.append(data_symbols, frequency_filler[:excess])
-        print(carriers_required, excess, len(data_symbols), len(dataCarriers))
 
         OFDM_frames = []
         for i in range(0, carriers_required*len(dataCarriers), len(dataCarriers)):
@@ -495,36 +484,12 @@ class OFDM():
             OFDM_symbol = np.append(OFDM_symbol[self.N-self.prefix_no:self.N], OFDM_symbol)   
             OFDM_symbol = np.real(OFDM_symbol)
             OFDM_frames.append(OFDM_symbol)   
-            
+        
+        OFDM_frames = np.ravel(OFDM_frames)
         return OFDM_frames, [allCarriers, pilotCarriers, dataCarriers], data_bits
 
-    def data_remove_pilots(self, all_frames, carrier_indices, channel_fft, filename=None):
-        
-        pilot_indices = carrier_indices[1]
-        data_indices = carrier_indices[2]
-        
-        pilot_symbols = []
-        data_symbols = []
-        bits = ""
-        for i in range(len(all_frames)):
-            
-            frame_no_cp = all_frames[i][self.prefix_no:]
-            frame_dft = np.fft.fft(frame_no_cp)
 
-            pilots = frame_dft[pilot_indices]
-            data = frame_dft[data_indices]
-            
-            bits+=decode_symbols_2_bitstring(data, channel_fft[data_indices])
-            
-            pilot_symbols.append(pilots)
-            data_symbols.append(data)
-        
-        if filename:
-            bitstr_to_file(bits, filename)
-        
-        return data_symbols, pilot_symbols, bits
-
-    def data_remove_pilots_correct_phase(self, all_frames, carrier_indices, channel_fft, filename):
+    def data_remove_pilots_correct_phase(self, all_frames, carrier_indices, channel_fft, filename=None):
     
         pilot_indices = carrier_indices[1]
         data_indices = carrier_indices[2]
@@ -551,6 +516,92 @@ class OFDM():
             pilot_symbols.append(pilots)
             data_symbols.append(data)
         
-        bitstr_to_file(bits, filename)
+        if filename:
+            bitstr_to_file(bits, filename)
         
         return data_symbols, pilot_symbols, bits
+
+
+    def sync_error_pilot(self, signal, start, offset, bits_tran, known_frame, fileout='decode.txt'):
+
+        # Get the average received frames by taking average of the
+        # repetition of the transmitted knwon OFDM symbols
+        avg_frame, start_refined = self.process_transmission(
+            self, signal, start, offset)
+
+        # Compute the channel responses
+        freq_response, imp_response = self.estimate_channel_response(
+            self, avg_frame, known_frame)
+
+        information = self.retrieve_info(self, signal, start_refined)
+
+        score = impulse_score(imp_response)
+        bits_rec = OFDMframes_to_bitstring(
+            information, self.N, self.prefix_no, freq_response)
+
+        if fileout:
+            bitstr_to_file(bits_rec, fileout)
+
+        error = error_rate(bits_tran, bits_rec)
+        return error, score
+
+
+
+    def fine_tuning_pilot(self, signal, start, known_frame, carrier_indices, data_frames_len=None, find_range=10, offset=20, filename=None):
+        
+        score_list = []
+        offset_list = []
+
+        # Could use bianry search for higher efficiency,
+        # But use linear method for now
+        # since performance is not important here
+        for i in range(- int(find_range/2), find_range, 1):
+            
+            # Compute the new offset in this round of for loop
+            new_offset = i + offset
+            # Append the current offset value into the list 
+            offset_list.append(new_offset)
+
+            # Compute the averaged known frame after transmission
+            _, avg_frame, _ = self.process_transmission_pilot(self, signal, start, new_offset)
+
+            # Compute the channel responses
+            _, imp_response = self.estimate_channel_response_pilot(self, avg_frame, known_frame)
+
+            # Compute the score of the impulse 
+            score = impulse_score(imp_response)
+            # Append the score into the list 
+            score_list.append(score)
+            print("index and score are:", i, score)
+
+        # <----- Use the best score calculated to do the computation again ----->
+        # Find the best score
+        best_score_index = np.argmax(score_list)
+        # Record the best score
+        best_score = np.max(score_list)
+        # Find the best offset value 
+        best_offset = offset_list[best_score_index]
+        # Refine the starting point with the best offset
+        start_refined = start - best_offset
+        
+        # Redo the channel measurements with the best val
+        _, avg_frame, _ = self.process_transmission_pilot(self, signal, start, best_offset)
+
+        # Compute the channel responses
+        best_freq_response, best_imp_response = self.estimate_channel_response_pilot(
+                self, avg_frame, known_frame)
+        
+        data_begin = start_refined + len(known_frame)* self.repeat + self.gap # include gap
+
+        if data_frames_len:
+            rx_data_full = signal[data_begin:data_begin + data_frames_len]
+        else:
+            rx_data_full = signal[data_begin:-1]
+        rx_data_frames = np.split(rx_data_full, data_frames_len / (self.N + self.prefix_no))
+
+        _, _, bits_rec = self.data_remove_pilots_correct_phase(self, rx_data_frames, carrier_indices, best_freq_response)
+
+        if filename:
+            bitstr_to_file(bits_rec, filename)
+
+        return best_offset, best_score, bits_rec, best_imp_response
