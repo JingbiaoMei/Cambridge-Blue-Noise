@@ -119,7 +119,7 @@ class OFDM():
         """returns standard log chirp waveform and its time-reverse"""
 
         sec = 1
-        k = 100
+        k = 50
         w1 = 100
         w2 = self.chirp_high
 
@@ -508,6 +508,47 @@ class OFDM():
 
 
     def data_remove_random_pilots_correct_phase(self, all_frames, carrier_indices, channel_fft,  pilot_values, underfill=0, filename= None):
+    
+        pilot_indices = carrier_indices[1]
+        data_indices = carrier_indices[2]
+        
+        pilot_symbols = []
+        data_symbols = []
+        
+        bits = ""
+        for i in range(len(all_frames)):
+            
+            frame_no_cp = all_frames[i][self.prefix_no:]
+            frame_dft = np.fft.fft(frame_no_cp)
+
+            pilots = frame_dft[pilot_indices]
+            data = frame_dft[data_indices]
+            
+            pilots_demod = pilots / channel_fft[pilot_indices]
+            pilots_phase_change = np.angle(pilots_demod / pilot_values) # divide by each known pilot symbol and get phase change
+            
+            phase_adjustment = np.polyfit(pilot_indices, np.unwrap(pilots_phase_change), 1)[0] # take gradient, intercept should be zero
+            
+            pilots *=  np.exp(-1j*phase_adjustment*carrier_indices[1])
+            data *=  np.exp(-1j*phase_adjustment*carrier_indices[2])
+            
+            if (i==len(all_frames)-1) and (underfill != 0):
+                print("Last frame")
+                bits+=decode_symbols_2_bitstring(data[:underfill], channel_fft[data_indices][:underfill])
+            else:
+                bits+=decode_symbols_2_bitstring(data, channel_fft[data_indices])
+            
+            pilot_symbols.append(pilots)
+            data_symbols.append(data)
+            
+        if filename:
+            bitstr_to_file(bits, filename)
+        
+        return data_symbols, pilot_symbols, bits
+
+
+
+    def data_remove_random_pilots_correct_phase_LDPC(self, all_frames, carrier_indices, channel_fft,  pilot_values, underfill=0, filename= None):
     
         pilot_indices = carrier_indices[1]
         data_indices = carrier_indices[2]
