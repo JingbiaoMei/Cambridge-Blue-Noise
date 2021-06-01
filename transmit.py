@@ -48,7 +48,7 @@ def impulse_score(impulse):
 class OFDM():
 
     # Initialize parameters
-    def __init__(self, N, prefix_no, fs, repeat, gap_second, seed = 2021):
+    def __init__(self, N, prefix_no, fs, repeat, gap_second, chirp_high, min_bin=20, max_bin=575, seed = 2021):
         # DFT length
         self.N = N
 
@@ -67,37 +67,17 @@ class OFDM():
         # Random seeds standardised across teams
         self.seed = seed
 
+        # Chirp high frequency
+        self.chirp_high = chirp_high
+
+        # Minimum frequency bin of the OFDM
+        self.min_bin = min_bin
+
+        # Maximum frequency bin of the OFDM
+        self.max_bin = max_bin
+
 
     # Random symbol for channel estimation
-    def generate_random_symbols(self):
-        random_symbol = np.array([81, 41, 51, 46, 19, 27, 84, 53,  0, 86, 54, 17, 33, 32,  8, 24, 19,
-                                  38, 58, 28, 74, 10, 39, 24, 39, 22, 59, 58, 70, 74, 82, 64,  4, 77,
-                                  98, 50, 26, 36, 21, 32, 56, 27, 92, 42, 63, 91, 67, 76, 65, 40, 17,
-                                  49, 66, 42, 87, 20, 50, 89, 48, 47, 40, 29, 57, 40, 92, 73,  8, 26,
-                                  12, 76, 24, 82, 43, 14, 40, 19, 56, 97, 78, 43, 96, 43, 89,  6, 11,
-                                  98, 58, 25, 91, 16, 40, 77, 52,  9, 34, 45, 36, 69, 12, 29, 38, 45,
-                                  88, 14, 20, 49,  1, 61, 48, 36, 10, 44, 44,  5,  7, 34, 26, 72,  7,
-                                  63, 68, 27, 12, 71, 39, 54, 96,  1, 70, 67, 76, 30, 77, 73, 28, 88,
-                                  31, 17, 86, 62,  1, 12, 35, 74,  3, 87, 73, 26, 83, 73,  6,  3, 32,
-                                  37, 39, 53, 90, 88, 60, 89, 93, 91,  4, 53,  5,  4,  4, 58, 35, 63,
-                                  27, 77, 51, 87, 24, 31, 16,  4, 87, 98, 52, 90, 68, 37, 75, 56, 34,
-                                  30, 50, 26, 20, 96, 51, 94, 60, 55, 14, 74,  4, 73, 13, 45, 67,  8,
-                                  61, 12, 93,  6, 87, 14, 90, 64, 33, 29, 68, 13, 60, 18,  9, 60,  3,
-                                  15,  6, 48, 34, 44, 63, 25, 39, 18,  5, 56, 38, 46,  6, 64, 36, 29,
-                                  90, 47, 23, 29, 97, 19,  5, 47, 30, 63, 98, 99, 20, 91, 69, 24, 35,
-                                  59])
-
-        bin_strings = ''
-        for byte in random_symbol:
-            binary_string = '{0:08b}'.format(byte)
-            bin_strings += binary_string
-
-        full_symbols = encode_bitstr2symbols(bin_strings)
-        # fit the symbols in the 1st half of the OFDM frame
-        symbols = full_symbols[:self.N//2-1]
-
-        return symbols
-
     def generate_random_symbols_seeds(self):
         rng = np.random.default_rng(self.seed)
         length_random_sequence = self.N//2 -1
@@ -113,51 +93,6 @@ class OFDM():
         random_symbols = [mapping[r] for r in random_sequence]
         return random_symbols
 
-
-    def known_OFDM_frame(self, symbols):
-        """Takes N//2 symbols and returns single real OFDM frame"""
-
-        # change info bins to just 256 corresponding to ~ 11kHz
-        # so here now 256 info bins - same as num symbols -> so one OFDM symbol
-        info_bins = int(self.N//2)-1
-        OFDM_frames = []
-
-        # start from 3rd bin (~82 Hz onward) too??
-
-        OFDM_frames = []
-        # for each OFDM block
-
-        for i in range(0, len(symbols), info_bins):
-            # frequency bins 0 and 512(int(N/2)) contains value 0
-            OFDM_block = [0]
-            # start from 3rd bin? depends on bandwidth, N etc.
-            OFDM_block[1:] = symbols[i:i+info_bins]
-
-            # add 0s to the end when data is not an integer factor of 512
-            # change from info_bins as thats now reduced - crucial for conjugate symmetry
-            while len(OFDM_block) <= ((self.N/2)):
-                OFDM_block.append(0)
-            # merge lines above/below?
-            # OFDM_block.append(0)#frequency bins 0 and 512(int(N/2)) contains value 0
-
-            # reverse conjugate
-            for j in range(len(OFDM_block)-2, 0, -1):  # count up or down
-                OFDM_block.append(np.conj(OFDM_block[j]))
-
-            # ----iDFT----
-            OFDM_frame = np.fft.ifft(OFDM_block, n=self.N)
-
-            # ----add cyclic prefix----
-            #cyclic_prefix = OFDM_frame[self.N-self.prefix_no:]
-
-            #OFDM_frame = np.append(cyclic_prefix, OFDM_frame, axis=0)
-            OFDM_frames.append(OFDM_frame)
-
-        # only to get rid of +0j parts after iFFT
-        OFDM_frames = np.real(OFDM_frames) * 10
-        frame = OFDM_frames[0]
-        return frame
-
     def generate_known_OFDM(self, symbols):
         known_frame = symbol_to_OFDMframes(symbols, self.N, self.prefix_no)[0]
         known_frames = np.tile(known_frame, self.repeat)
@@ -170,8 +105,8 @@ class OFDM():
 
         sec = 1
         k = 100
-        w1 = 60
-        w2 = 6000
+        w1 = 100
+        w2 = self.chirp_high
 
         t = np.linspace(0, sec, int(self.fs*sec))
 
@@ -209,7 +144,6 @@ class OFDM():
         return tx_signal
 
     
-
     def ideal_channel_response(self, signal):
         """Returns channel output for tx signal"""
 
@@ -445,7 +379,7 @@ class OFDM():
         
     
         rng = np.random.default_rng(self.seed)
-        length_random_sequence = self.N//2 # need 511 extra symbols
+        length_random_sequence = self.N//2 - 1 # need 511 extra symbols
         random_sequence = rng.integers(low=0, high=4, size=length_random_sequence)
 
         mapping = {
@@ -489,6 +423,42 @@ class OFDM():
         return OFDM_frames, [allCarriers, pilotCarriers, dataCarriers], data_bits
 
 
+    def data_add_random_pilots(self, filename):
+
+        frequency_filler = self.generate_random_symbols_seeds(self)
+        
+        all_carriers = np.arange(self.min_bin, self.max_bin) # min_bin, ..., max_bin-1
+        pilot_ratio = 16
+        pilot_carriers = all_carriers[0:-1:pilot_ratio]
+        data_carriers = np.delete(all_carriers, pilot_carriers- self.min_bin)
+        
+        data_bits = file_to_bitstr(filename)
+        data_symbols= encode_bitstr2symbols(data_bits)
+        carriers_required = int(np.ceil(len(data_symbols)/len(data_carriers)))
+        
+        OFDM_frames = []
+        for i in range(0, carriers_required):
+
+            frame = np.zeros(self.N//2, dtype=complex)
+            frame[1:self.N//2-1] = frequency_filler[1:self.N//2-1]
+            data_to_add = data_symbols[i*len(data_carriers):(i+1)*len(data_carriers)]
+            frame[data_carriers[:len(data_to_add)]] = data_to_add
+
+            frame = np.append(frame, np.append(0, np.conj(frame)[:0:-1]))
+            OFDM_frame = np.real(np.fft.ifft(frame, self.N))
+            OFDM_frame = np.append(OFDM_frame[self.N-self.prefix_no:self.N], OFDM_frame)
+
+            OFDM_frames.append(OFDM_frame)
+
+        OFDM_frames = np.ravel(OFDM_frames)
+
+        underfill = len(data_to_add) # for last frame only
+
+        pilot_values = [frequency_filler[x] for x in pilot_carriers]
+        
+
+        return OFDM_frames, underfill, [all_carriers, pilot_carriers, data_carriers], pilot_values, data_bits
+
     def data_remove_pilots_correct_phase(self, all_frames, carrier_indices, channel_fft, filename=None):
     
         pilot_indices = carrier_indices[1]
@@ -522,6 +492,47 @@ class OFDM():
         return data_symbols, pilot_symbols, bits
 
 
+    def data_remove_random_pilots_correct_phase(self, all_frames, carrier_indices, channel_fft,  pilot_values, underfill=0, filename= None):
+    
+        pilot_indices = carrier_indices[1]
+        data_indices = carrier_indices[2]
+        
+        pilot_symbols = []
+        data_symbols = []
+        
+        bits = ""
+        for i in range(len(all_frames)):
+            
+            frame_no_cp = all_frames[i][self.prefix_no:]
+            frame_dft = np.fft.fft(frame_no_cp)
+
+            pilots = frame_dft[pilot_indices]
+            data = frame_dft[data_indices]
+            
+            pilots_demod = pilots / channel_fft[pilot_indices]
+            pilots_phase_change = np.angle(pilots_demod / pilot_values) # divide by each known pilot symbol and get phase change
+            
+            phase_adjustment = np.polyfit(pilot_indices, np.unwrap(pilots_phase_change), 1)[0] # take gradient, intercept should be zero
+            
+            pilots *=  np.exp(-1j*phase_adjustment*carrier_indices[1])
+            data *=  np.exp(-1j*phase_adjustment*carrier_indices[2])
+            
+            if (i==len(all_frames)-1) and (underfill != 0):
+                print("Last frame")
+                bits+=decode_symbols_2_bitstring(data[:underfill], channel_fft[data_indices][:underfill])
+            else:
+                bits+=decode_symbols_2_bitstring(data, channel_fft[data_indices])
+            
+            pilot_symbols.append(pilots)
+            data_symbols.append(data)
+            
+        if filename:
+            bitstr_to_file(bits, filename)
+        
+        return data_symbols, pilot_symbols, bits
+
+
+
     def sync_error_pilot(self, signal, start, offset, bits_tran, known_frame, fileout='decode.txt'):
 
         # Get the average received frames by taking average of the
@@ -547,7 +558,7 @@ class OFDM():
 
 
 
-    def fine_tuning_pilot(self, signal, start, known_frame, carrier_indices, data_frames_len=None, find_range=10, offset=20, filename=None):
+    def fine_tuning_pilot(self, signal, start, known_frame, carrier_indices, pilot_values, underfill, data_frames_len=None, find_range=10, offset=20, filename=None):
         
         score_list = []
         offset_list = []
@@ -572,7 +583,7 @@ class OFDM():
             score = impulse_score(imp_response)
             # Append the score into the list 
             score_list.append(score)
-            print("index and score are:", i, score)
+            #print("index and score are:", i, score)
 
         # <----- Use the best score calculated to do the computation again ----->
         # Find the best score
@@ -599,8 +610,8 @@ class OFDM():
             rx_data_full = signal[data_begin:-1]
         rx_data_frames = np.split(rx_data_full, data_frames_len / (self.N + self.prefix_no))
 
-        _, _, bits_rec = self.data_remove_pilots_correct_phase(self, rx_data_frames, carrier_indices, best_freq_response)
-
+        _, _, bits_rec = self.data_remove_random_pilots_correct_phase(self, rx_data_frames, carrier_indices, best_freq_response, pilot_values, underfill)
+        
         if filename:
             bitstr_to_file(bits_rec, filename)
 
