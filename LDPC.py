@@ -53,68 +53,69 @@ def divide_codebits(input__bits,decode=False,N=1024,rate='1/2',r=0.5,z=27):
     
     return output_bits_frange
 
-    # """
-    # Args:
-    #     input_bits: array of numbers. can be 1s and 0s, and also decimals (the y received)
 
-    # Returns:
-    #     output_bits_r_z: array: [[[bits0],r0,z0], [[bits1],r1,z1], ...] 
-    #     -- note 'bits' can also be ys
-    # """
-    # avaliable_ks=[]
-    # for r in [['1/2',1/2],['2/3',2/3],['3/4',3/4], ['5/6',5/6]]:
-    #     for z in [27,54,81]:
-    #         avaliable_ks.append([r[1]*z*24,r[1],r[0],z])
-    #         # if decode:
-    #         #     avaliable_ks.append([z*24,r[1],r[0],z]) #TODO
-    #         # else:
-    #         #     avaliable_ks.append([r[1]*z*24,r[1],r[0],z])
-    
-    # dist=divide_bin_to_sizes(len(input_bits),avaliable_ks)
-
-    # output_bits_r_z=[]
-    # for key in dist:
-        
-    #     n,r,r_str,z=dist[key]
-    #     # if key!=1:
-    #     #     print("hi")
-    #     # n=int(n)
-    #     # n=int(n*key)
-    #     # print(n)
-    #     for i in range(n):
-    #         if decode:
-    #             if key==648:
-    #                 print('hi')
-    #             if r!=0:
-    #                 encoded_codelength=key/r
-    #                 cooresponding_bits=input_bits[:int(encoded_codelength)]
-    #             else:
-    #                 cooresponding_bits=input_bits[:int(key)]
-    #         else:
-    #             cooresponding_bits=input_bits[:int(key)]
-    #         input_bits=input_bits[int(key):]
-    #         output_bits_r_z.append([cooresponding_bits,r_str,z])
-    # return output_bits_r_z
-
-
-def LDPC_encode(bits,inputLenIndicator_len=24,inputGuard_len=8,N=1024,rate='1/2',r=0.5,z=27):
+def LDPC_encode(bits,inputLenIndicator_len=24, inputGuard_len=8,N=1024,rate='1/2',r=0.5,z=27,len_protection='input_repeat_then_LDPC',repeat_times=3,test=False):
     """
     bits: array of numbers. can be 1s and 0s, and also decimals (the y received)     
+    len_protection (default:'no'): str. choices: 'no', 'input_repeat_then_LDPC', 'input_repeat_then_LDPC', 'guardBits'
     returns [LDPCstr_coded, list of rzs]
     """
     input_bit_length=len(bits)
     input_bit_length_bin=deci_to_binstr(input_bit_length,inputLenIndicator_len)
     
-    add=''
-    for i in input_bit_length_bin:
-        if i=='0':
-            add+='0'
-        elif i=='1':
-            add+='1'
-        else:
-            raise ValueError
-    bits_with_indicator=add+bits
-    bits_with_indicator_and_guard=bits_with_indicator+'0'*inputGuard_len
+    
+
+
+    if len_protection =='no':
+        inputGuard_len=0
+        add=''
+        for i in input_bit_length_bin:
+            if i=='0':
+                add+='0'
+            elif i=='1':
+                add+='1'
+            else:
+                raise ValueError
+        bits_with_indicator_and_guard=add+bits
+    elif len_protection =='guardBits':
+        add=''
+        for i in input_bit_length_bin:
+            if i=='0':
+                add+='0'
+            elif i=='1':
+                add+='1'
+            else:
+                raise ValueError
+        bits_with_indicator_and_guard=add+'0'*inputGuard_len+bits
+    elif len_protection =='input_repeat_then_LDPC':
+        inputGuard_len=0
+        inputLenIndicator_len*=repeat_times
+        add=''
+        for i in input_bit_length_bin:
+            if i=='0':
+                add+='0'*repeat_times
+            elif i=='1':
+                add+='1'*repeat_times
+            else:
+                raise ValueError
+        bits_with_indicator_and_guard=add+bits
+    # elif len_protection =='input_repeat9_then_LDPC':
+    #     inputGuard_len=0
+    #     inputLenIndicator_len*=9
+    #     add=''
+    #     for i in input_bit_length_bin:
+    #         if i=='0':
+    #             add+='000000000'
+    #         elif i=='1':
+    #             add+='111111111'
+    #         else:
+    #             raise ValueError
+    #     bits_with_indicator_and_guard=add+bits
+    else:
+        raise ValueError("input for len_protection incorrect")
+
+
+
     assert len(bits_with_indicator_and_guard)==input_bit_length+inputLenIndicator_len+inputGuard_len
     bits_r_zs=divide_codebits(bits_with_indicator_and_guard,decode=False,N=N,rate=rate,r=r,z=z)
 
@@ -146,31 +147,35 @@ def LDPC_encode(bits,inputLenIndicator_len=24,inputGuard_len=8,N=1024,rate='1/2'
         LDPCstr_coded+=coded
         rzs.append([r,z])
         # LDPC_coded.append([coded,r,z])
+        if test:
+            return LDPCstr_coded
 
+    a=LDPCstr_coded[:int(inputLenIndicator_len)]
     return LDPCstr_coded
 
 
 
-def llr(ys,var):
+def llr(ys,ck):
     # TODO: channel estimate coeff
     """returns llr of ys.
     Var is the noise variance of the awgn channel
     """
-    return (2.0**0.5)/var*ys
+    return (2.0**0.5)/(ck*np.conj(ck))*ys
 
-def LDPC_decode(ys_,var,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24,inputGuard_len=8,cks=[]):
+def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
     """[summary]
 
     Args:
         ys : ys received from OFDM decoding. Array of floats
         var : var of awgn channel noise
         N : block length of OFDM
+        len_protection (default:'no'): str. choices: 'no', 'input_repeat3_then_LDPC', 'input_repeat9_then_LDPC', 'guardBits'
 
     Returns:
         LDPCstr_decoded
     """
     ys=ys_
-    ys_franges=divide_codebits(ys,True,N=N,rate='1/2',r=0.5,z=27)
+    ys_franges=divide_codebits(ys,decode=True,N=N,rate=rate,r=r,z=z)
 
     encoded_block_length_k=z*24
 
@@ -208,29 +213,77 @@ def LDPC_decode(ys_,var,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24,inputGu
         
         # llrs = llr(ys,var) 
         llrs=np.array(llrs)
+        more_indicator_len=0
 
         if i==0:
-            # TODO: infinity after matrix multi with G matrix
-            # Ask Jossy?
+            if len_protection=='guardBits':
+                more_indicator_len=inputGuard_len
 
-            # llrs[inputLenIndicator_len:inputLenIndicator_len+inputGuard_len] = np.array([positive_infnity]*(inputGuard_len))
-            # llrs[inputLenIndicator_len:inputGuard_len] = 
-            (app,nit)= LDPC_coder.decode(llrs)
+                # TODO: how can we make sure which llrs are certain?
+                # we are certain about these llrs (certain that these codes are 0) (due to zero padding in inputGuard_len)
+                # llrs[inputLenIndicator_len:inputLenIndicator_len+inputGuard_len]=[positive_infnity]*inputGuard_len
+                
+                (app,nit)= LDPC_coder.decode(llrs)
+                transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
+                decoded=transmitted[:int(len(transmitted)/2)]
+                str_decoded = ''
+                for i in decoded:
+                    str_decoded+=str(int(i))
+                decoded=str_decoded[int(inputLenIndicator_len):]
+                len_=str_decoded[:int(inputLenIndicator_len)]
+                total_length= binstr_to_deci(len_ )/r
 
-            transmitted=(app<0.0) # transmitted is np.array of Trues and Falses
-            # this is the LDPC encoded bits before awgn transmission
+            elif len_protection=='no':
+                
+                (app,nit)= LDPC_coder.decode(llrs)
+                transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
+                decoded=transmitted[:int(len(transmitted)/2)]
+                str_decoded = ''
+                for i in decoded:
+                    str_decoded+=str(int(i))
+                decoded=str_decoded[int(inputLenIndicator_len):]
+                total_length= binstr_to_deci( str_decoded[:int(inputLenIndicator_len)])/r
 
 
-            decoded=transmitted[:int(len(transmitted)/2)]
-            str_decoded = ''
-            for i in decoded:
-                str_decoded+=str(int(i))
-            decoded=str_decoded[int(inputLenIndicator_len):]
-            total_length= binstr_to_deci( str_decoded[:int(inputLenIndicator_len)])/r
+            elif len_protection=='input_repeat_then_LDPC':
+                inputLenIndicator_len*=repeat_times
+                (app,nit)= LDPC_coder.decode(llrs)
+                transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
+                decoded=transmitted[:int(len(transmitted)/2)]
+                str_decoded = ''
+                for i in decoded:
+                    str_decoded+=str(int(i))
+                decoded=str_decoded[int(inputLenIndicator_len):]
+                length_bin = str_decoded[:int(inputLenIndicator_len)]
+                length_bin = repetitive_decode_str2str(length_bin,repeat_times)
+                total_length= binstr_to_deci(length_bin)/r
+
+
+            # elif len_protection=='input_repeat9_then_LDPC':
+            #     inputLenIndicator_len*=9
+            #     (app,nit)= LDPC_coder.decode(llrs)
+            #     transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
+            #     decoded=transmitted[:int(len(transmitted)/2)]
+            #     str_decoded = ''
+            #     for i in decoded:
+            #         str_decoded+=str(int(i))
+            #     decoded=str_decoded[int(inputLenIndicator_len):]
+            #     length_bin = str_decoded[:int(inputLenIndicator_len)]
+            #     length_bin = repetitive_decode_str2str(length_bin,9)
+            #     total_length= binstr_to_deci(length_bin)/r
+
+            else:
+                raise ValueError("param len_protection wrong")
+
+
+
             
             total_length=int(total_length)
             print("\ntotal_length: ",total_length)
-            decoded_length_count+=encoded_block_length_k - inputLenIndicator_len
+            if OnlyTestLen:
+                return total_length/2==FileLengthKnown
+            decoded_length_count+=int(encoded_block_length_k - inputLenIndicator_len/r - more_indicator_len/r)
+ 
 
         elif decoded_length_count+encoded_block_length_k<total_length:
 
@@ -256,9 +309,9 @@ def LDPC_decode(ys_,var,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24,inputGu
             # if i!=len(ys_franges)-1:
             #     raise ValueError("not last block")
              # TODO: check
-            llrs=llrs[:total_length-decoded_length_count]
-            padding=np.array([positive_infnity]*(encoded_block_length_k-(total_length-decoded_length_count)))
-            llrs=np.concatenate([llrs,padding])
+            # llrs=llrs[:total_length-decoded_length_count]
+            # padding=np.array([positive_infnity]*(encoded_block_length_k-(total_length-decoded_length_count)))
+            # llrs=np.concatenate([llrs,padding])
 
             assert len(llrs)==encoded_block_length_k
         
