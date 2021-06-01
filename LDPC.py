@@ -8,7 +8,7 @@ from util import *
 # TODO: when noise variance gets large, the file length decoded can get wrong (and decoder crashes)
 
 
-def divide_codebits(input__bits,decode=False,N=1024,rate='1/2',r=0.5,z=27):
+def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=27):
 
     """
      Args:
@@ -54,7 +54,7 @@ def divide_codebits(input__bits,decode=False,N=1024,rate='1/2',r=0.5,z=27):
     return output_bits_frange
 
 
-def LDPC_encode(bits,inputLenIndicator_len=24, inputGuard_len=8,N=1024,rate='1/2',r=0.5,z=27,len_protection='input_repeat_then_LDPC',repeat_times=3,test=False):
+def LDPC_encode(bits,inputLenIndicator_len=24, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=27,len_protection='input_repeat_then_LDPC',repeat_times=3,test=False):
     """
     bits: array of numbers. can be 1s and 0s, and also decimals (the y received)     
     len_protection (default:'no'): str. choices: 'no', 'input_repeat_then_LDPC', 'input_repeat_then_LDPC', 'guardBits'

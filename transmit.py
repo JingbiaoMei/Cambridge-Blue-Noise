@@ -7,6 +7,7 @@ import soundfile as sf
 #from scipy import interpolate
 import os
 from pydub import AudioSegment
+from LDPCQAMCombined import *
 
 
 # Util functions
@@ -48,7 +49,7 @@ def impulse_score(impulse):
 class OFDM():
 
     # Initialize parameters
-    def __init__(self, N, prefix_no, fs, repeat, gap_second, chirp_high, min_bin=20, max_bin=575, seed = 2021):
+    def __init__(self, N, prefix_no, fs, repeat, gap_second, chirp_high, min_bin=20, max_bin=575, seed = 2021,inputLenIndicator_len=24,rate='1/2',r=0.5,z=27,len_protection='input_repeat_then_LDPC',repeat_times=3):
         # DFT length
         self.N = N
 
@@ -75,6 +76,20 @@ class OFDM():
 
         # Maximum frequency bin of the OFDM
         self.max_bin = max_bin
+
+
+        # parameters for LDPC
+        self.rate = rate
+        self.r = r
+        self.z = z
+        
+        # number of bits used to express file_length
+        self.inputLenIndicator_len = inputLenIndicator_len 
+
+        # method to protect file_length information
+        self.len_protection = len_protection
+        self.repeat_times = repeat_times
+        # e.g. if inputLenIndicator_len is 24, and repeat_times is 3, this means 24x3 bits before LDPC encoding will be used to hold the file_length information
 
 
     # Random symbol for channel estimation
@@ -123,7 +138,7 @@ class OFDM():
         frames = np.tile(frame, self.repeat)
 
         bits_tran = file_to_bitstr(filename)
-        symbols_tran = encode_bitstr2symbols(bits_tran)
+        symbols_tran = encode_bitstr2symbols_via_LDPC(bits_tran,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False)
         data_tran = symbol_to_OFDMframes(symbols_tran, self.N, self.prefix_no)
         data_tran = np.real(data_tran)
         data_length = data_tran.shape[0]*data_tran.shape[1]
@@ -310,8 +325,8 @@ class OFDM():
         information = self.retrieve_info(self, signal, start_refined)
 
         score = impulse_score(imp_response)
-        bits_rec = OFDMframes_to_bitstring(
-            information, self.N, self.prefix_no, freq_response)
+        bits_rec = OFDMframes_to_bitstring_via_LDPC(
+            information, self.N, self.prefix_no, freq_response,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times)
 
         if fileout:
             bitstr_to_file(bits_rec, fileout)
@@ -359,8 +374,8 @@ class OFDM():
                 self, avg_frame, known_frame)
 
         information = self.retrieve_info(self, signal, start_refined)
-        bits_rec = OFDMframes_to_bitstring(
-            information, self.N, self.prefix_no, freq_response)
+        bits_rec = OFDMframes_to_bitstring_via_LDPC(
+            information, self.N, self.prefix_no, freq_response,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times)
 
         return best_offset, best_score, bits_rec, best_imp_response
 
@@ -369,7 +384,7 @@ class OFDM():
     def data_to_OFDM(self, filename):
     
         bits_tran = file_to_bitstr(filename)
-        symbols_tran = encode_bitstr2symbols(bits_tran)
+        symbols_tran = encode_bitstr2symbols_via_LDPC(bits_tran,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False)
         data_tran = symbol_to_OFDMframes(symbols_tran, self.N, self.prefix_no)
         data_tran = np.real(data_tran)
         
@@ -400,7 +415,7 @@ class OFDM():
         dataCarriers = np.delete(dataCarriers, [0])
         
         data_bits = file_to_bitstr(filename)
-        data_symbols= encode_bitstr2symbols(data_bits)
+        data_symbols= encode_bitstr2symbols_via_LDPC(data_bits,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False)
 
         carriers_required = int(np.ceil(len(data_symbols)/len(dataCarriers)))
         excess = int(len(dataCarriers) * carriers_required) - len(data_symbols)
@@ -433,7 +448,7 @@ class OFDM():
         data_carriers = np.delete(all_carriers, pilot_carriers- self.min_bin)
         
         data_bits = file_to_bitstr(filename)
-        data_symbols= encode_bitstr2symbols(data_bits)
+        data_symbols= encode_bitstr2symbols_via_LDPC(data_bits,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False)
         carriers_required = int(np.ceil(len(data_symbols)/len(data_carriers)))
         
         OFDM_frames = []
@@ -547,8 +562,8 @@ class OFDM():
         information = self.retrieve_info(self, signal, start_refined)
 
         score = impulse_score(imp_response)
-        bits_rec = OFDMframes_to_bitstring(
-            information, self.N, self.prefix_no, freq_response)
+        bits_rec = OFDMframes_to_bitstring_via_LDPC(
+            information, self.N, self.prefix_no, freq_response,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times)
 
         if fileout:
             bitstr_to_file(bits_rec, fileout)
