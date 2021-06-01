@@ -7,12 +7,12 @@ from sys import stdout
 
 
 
-def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='no',inputLenIndicator_len=24,inputGuard_len=8,rate='1/2',r=0.5,z=27,filename='test.txt',OnlyTestLen=True,repeat_times=3):
+def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='no',inputLenIndicator_len=24,inputGuard_len=8,rate='1/2',r=0.5,z=27,filename='input.png',OnlyTestLen=True,repeat_times=3,cut=20000):
 
     print("\n----------------- New Trial ----------------- \nlen_protection is: ",len_protection)
 
     
-    bits=file_to_bitstr(filename)
+    bits=file_to_bitstr(filename)[:cut]
     print('input file length:',len(bits))
 
 
