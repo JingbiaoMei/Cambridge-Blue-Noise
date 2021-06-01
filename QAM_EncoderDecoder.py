@@ -1,7 +1,7 @@
 from os import name
 import numpy as np
 from util import *
-
+from LDPC import *
 # -------------Encoder----------------
 def file_to_bitstr(filename):
     """[convert the binary content in the file to a string of 0s and 1s]
@@ -47,6 +47,32 @@ def encode_bitstr2symbols(bits):
 
 
 
+
+
+# -------------Decoder----------------
+def decode_symbols_2_bitstring(symbols,channel_fft=False):
+    data = ''
+    for i in range(len(symbols)):
+        if channel_fft.any():
+            element=symbols[i]/ channel_fft[i]
+        else:
+            element=symbols[i]
+        if np.real(element) >= 0:
+            if np.imag(element) >= 0:
+                data += '00'
+            else:
+                data += '10'
+        else:
+            if np.imag(element) >= 0:
+                data += '01'
+            else:
+                data += '11'
+    return data
+
+
+
+
+
 #-------------OFDM Encoder----------------
 
 def symbol_to_OFDMframes(symbols,N,prefix_no):
@@ -89,6 +115,7 @@ def symbol_to_OFDMframes(symbols,N,prefix_no):
 
 #-------------OFDM Decoder----------------
 def OFDMframes_to_bitstring(OFDM_frames,N,prefix_no,channel_fft=False):
+    print("inside OFDMframes_to_bitstring")
     #print("about to do OFDMframes_to_bitstring decoding")
     bits=""
     for i in range(len(OFDM_frames)):
@@ -104,12 +131,16 @@ def OFDMframes_to_bitstring(OFDM_frames,N,prefix_no,channel_fft=False):
     #print("OFDMframes_to_bitstring decoding finished")
     return bits
 
-def OFDMframes_to_y_float(OFDM_frames,N,prefix_no,):
+
+def OFDMframes_to_y_float(OFDM_frames,N,prefix_no):
     """inputs:
         OFDM_frames: 2d np.array
     returns 1d array [[OFDMframe0_0_img, OFDMframe0_0_real, OFDMframe0_1_img,...],[OFDMframe1_0_img,...],...]
     """
+
+    
     #print("about to do OFDMframes_to_y_float decoding")
+    print("inside OFDMframes_to_y_float")
     ys=[]
     for i in range(len(OFDM_frames)):
         frame_prefix = OFDM_frames[i][prefix_no:] # remove cp
@@ -122,6 +153,7 @@ def OFDMframes_to_y_float(OFDM_frames,N,prefix_no,):
     return ys
 
 def OFDMframes_to_constellation(OFDM_frames,N,prefix_no,channel_fft=False):
+    print("inside OFDMframes_to_constellation")
     #print("about to do OFDMframes_to_bitstring decoding")
     bits=""
     for i in range(len(OFDM_frames)):
@@ -129,28 +161,6 @@ def OFDMframes_to_constellation(OFDM_frames,N,prefix_no,channel_fft=False):
         frame_dft = np.fft.fft(frame_prefix, n=N) 
     #print("OFDMframes_to_bitstring decoding finished")
     return frame_dft
-
-
-
-# -------------Decoder----------------
-def decode_symbols_2_bitstring(symbols,channel_fft=False):
-    data = ''
-    for i in range(len(symbols)):
-        if channel_fft.any():
-            element=symbols[i]/ channel_fft[i]
-        else:
-            element=symbols[i]
-        if np.real(element) >= 0:
-            if np.imag(element) >= 0:
-                data += '00'
-            else:
-                data += '10'
-        else:
-            if np.imag(element) >= 0:
-                data += '01'
-            else:
-                data += '11'
-    return data
 
 
 

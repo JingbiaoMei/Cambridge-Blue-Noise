@@ -5,6 +5,8 @@ def encode_bitstr2symbols_via_LDPC(bits,inputLenIndicator_len=24, inputGuard_len
     #print("about to do encode_bitstr2symbols encoding")
     LDPC_encoded_bits=LDPC_encode(bits,inputLenIndicator_len=inputLenIndicator_len, inputGuard_len=inputGuard_len,N=N,rate=rate,r=r,z=z,len_protection=len_protection,repeat_times=repeat_times,test=test)
     bits=LDPC_encoded_bits
+
+    
     symbols=[]
     for i in range(0,len(bits),2):
         bit1=bits[i]

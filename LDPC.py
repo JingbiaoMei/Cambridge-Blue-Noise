@@ -61,6 +61,8 @@ def LDPC_encode(bits,inputLenIndicator_len=24, inputGuard_len=8,N=2048,rate='1/2
     returns [LDPCstr_coded, list of rzs]
     """
     input_bit_length=len(bits)
+
+    print("input_bit_length:",input_bit_length)
     input_bit_length_bin=deci_to_binstr(input_bit_length,inputLenIndicator_len)
     
     
@@ -160,7 +162,7 @@ def llr(ys,ck):
     """returns llr of ys.
     Var is the noise variance of the awgn channel
     """
-    return (2.0**0.5)/(ck*np.conj(ck))*ys
+    return np.real((2.0**0.5)/(ck*np.conj(ck))*ys)
 
 def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
     """[summary]
@@ -186,7 +188,7 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard
     N_count=1 #frequency bins 0 and 512(int(N/2)) contains value 0
     N_upperbound=int(N/2)-1
 
-    assert len(cks)>=N_upperbound
+    # assert len(cks)>=N_upperbound
 
     for i in range(len(ys_franges)):
         ys_frange=ys_franges[i]
@@ -210,6 +212,187 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard
             N_count+=1
             if N_count>N_upperbound:
                 N_count-=N_upperbound
+        
+        # llrs = llr(ys,var) 
+        llrs=np.array(llrs)
+        more_indicator_len=0
+
+        if i==0:
+            if len_protection=='guardBits':
+                more_indicator_len=inputGuard_len
+
+                # TODO: how can we make sure which llrs are certain?
+                # we are certain about these llrs (certain that these codes are 0) (due to zero padding in inputGuard_len)
+                # llrs[inputLenIndicator_len:inputLenIndicator_len+inputGuard_len]=[positive_infnity]*inputGuard_len
+                
+                (app,nit)= LDPC_coder.decode(llrs)
+                transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
+                decoded=transmitted[:int(len(transmitted)/2)]
+                str_decoded = ''
+                for i in decoded:
+                    str_decoded+=str(int(i))
+                decoded=str_decoded[int(inputLenIndicator_len):]
+                len_=str_decoded[:int(inputLenIndicator_len)]
+                total_length= binstr_to_deci(len_ )/r
+
+            elif len_protection=='no':
+                
+                (app,nit)= LDPC_coder.decode(llrs)
+                transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
+                decoded=transmitted[:int(len(transmitted)/2)]
+                str_decoded = ''
+                for i in decoded:
+                    str_decoded+=str(int(i))
+                decoded=str_decoded[int(inputLenIndicator_len):]
+                total_length= binstr_to_deci( str_decoded[:int(inputLenIndicator_len)])/r
+
+
+            elif len_protection=='input_repeat_then_LDPC':
+                inputLenIndicator_len*=repeat_times
+                (app,nit)= LDPC_coder.decode(llrs)
+                transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
+                decoded=transmitted[:int(len(transmitted)/2)]
+                str_decoded = ''
+                for i in decoded:
+                    str_decoded+=str(int(i))
+                decoded=str_decoded[int(inputLenIndicator_len):]
+                length_bin = str_decoded[:int(inputLenIndicator_len)]
+                length_bin = repetitive_decode_str2str(length_bin,repeat_times)
+                total_length= binstr_to_deci(length_bin)/r
+
+
+            # elif len_protection=='input_repeat9_then_LDPC':
+            #     inputLenIndicator_len*=9
+            #     (app,nit)= LDPC_coder.decode(llrs)
+            #     transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
+            #     decoded=transmitted[:int(len(transmitted)/2)]
+            #     str_decoded = ''
+            #     for i in decoded:
+            #         str_decoded+=str(int(i))
+            #     decoded=str_decoded[int(inputLenIndicator_len):]
+            #     length_bin = str_decoded[:int(inputLenIndicator_len)]
+            #     length_bin = repetitive_decode_str2str(length_bin,9)
+            #     total_length= binstr_to_deci(length_bin)/r
+
+            else:
+                raise ValueError("param len_protection wrong")
+
+
+
+            
+            total_length=int(total_length)
+            print("\ntotal_length: ",total_length)
+            if OnlyTestLen:
+                return total_length/2==FileLengthKnown
+            decoded_length_count+=int(encoded_block_length_k - inputLenIndicator_len/r - more_indicator_len/r)
+ 
+
+        elif decoded_length_count+encoded_block_length_k<total_length:
+
+            if i==len(ys_franges)-1:
+                raise ValueError("last block not detected")
+
+             # TODO: check
+            (app,nit)= LDPC_coder.decode(llrs)
+
+            transmitted=(app<0.0) # transmitted is np.array of Trues and Falses
+            # this is the LDPC encoded bits before awgn transmission
+
+
+            decoded=transmitted[:int(len(transmitted)/2)]
+            str_decoded = ''
+            for i in decoded:
+                str_decoded+=str(int(i))
+            decoded=str_decoded
+
+            decoded_length_count+=encoded_block_length_k
+
+        else: #last block that contain information, doesn't have to be last OFDM block (OFDM has paddings as well)
+            # if i!=len(ys_franges)-1:
+            #     raise ValueError("not last block")
+             # TODO: check
+            # llrs=llrs[:total_length-decoded_length_count]
+            # padding=np.array([positive_infnity]*(encoded_block_length_k-(total_length-decoded_length_count)))
+            # llrs=np.concatenate([llrs,padding])
+
+            assert len(llrs)==encoded_block_length_k
+        
+            (app,nit)= LDPC_coder.decode(llrs)
+
+            transmitted=(app<0.0) # transmitted is np.array of Trues and Falses
+            # this is the LDPC encoded bits before awgn transmission
+
+
+            decoded=transmitted[:int(len(transmitted)/2)]
+            str_decoded = ''
+            for i in decoded:
+                str_decoded+=str(int(i))
+            decoded=str_decoded
+
+            decoded_length_count+=encoded_block_length_k
+
+            LDPCstr_decoded+=decoded
+
+
+            return LDPCstr_decoded[:int(total_length*r)]
+            
+        LDPCstr_decoded+=decoded
+    
+    raise ValueError("should not execute to this line")
+    return LDPCstr_decoded[:int(total_length*r)]
+    # return LDPCstr_decoded
+
+
+def LDPC_decode_with_niceCKs(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
+    """note: len(ys_)==len(cks)
+
+    Args:
+        ys : ys received, complex valued
+        var : var of awgn channel noise
+        N : block length of OFDM
+        len_protection (default:'no'): str. choices: 'no', 'input_repeat3_then_LDPC', 'input_repeat9_then_LDPC', 'guardBits'
+
+    Returns:
+        LDPCstr_decoded
+    """
+
+    assert len(ys_)==len(cks)
+    ys=separate_real_img(ys_)
+    
+    ys_franges=divide_codebits(ys,decode=True,N=N,rate=rate,r=r,z=z)
+    cks_=divide_codebits(cks,decode=True,N=N,rate=rate,r=r,z=z/2)
+
+    encoded_block_length_k=z*24
+
+    # LDPC_coded=[]
+    LDPCstr_decoded ='' 
+    decoded_length_count=0
+
+
+
+    for i in range(len(ys_franges)):
+        ys_frange=ys_franges[i]
+        cks=np.array(cks_[i][0])
+        print("\r",end="")
+        print("decoding {0}th LDPC block, {1} in total".format(i,len(ys_franges)),end="")
+        sys.stdout.flush()
+        ys=np.array(ys_frange[0])
+
+        LDPC_coder = ldpc.code(standard = '802.11n', rate = rate, z=z, ptype='A')
+        
+        llrs=[]
+
+                
+        # for j in range (0,len(ys),2):
+        # print("\nlen(cks):",len(cks))
+        # print("len(ys):",len(ys))
+        for j in range (len(cks)):
+            ys1=ys[j*2]
+            ys2=ys[j*2+1]
+            
+            llrs.append(llr(ys1,cks[j]))
+            llrs.append(llr(ys2,cks[j]))
+
         
         # llrs = llr(ys,var) 
         llrs=np.array(llrs)
