@@ -7,7 +7,7 @@ from sys import stdout
 
 
 
-def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='no',inputLenIndicator_len=24,inputGuard_len=8,rate='1/2',r=0.5,z=27,filename='input.png',OnlyTestLen=True,repeat_times=3,cut=20000):
+def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='no',inputLenIndicator_len=24,inputGuard_len=8,rate='1/2',r=0.5,z=27,filename='input.png',OnlyTestLen=True,repeat_times=3,cut=2000):
 
     print("\n----------------- New Trial ----------------- \nlen_protection is: ",len_protection)
 
@@ -87,12 +87,5 @@ def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='no',inpu
     print("finished one.")
 
 if __name__=='__main__':
-
-    ck10=np.load('./Channel_Measurement/channel_10sample.npy')
-    ck20=np.load('./Channel_Measurement/channel_20sample.npy')
-    ck100=np.load('./Channel_Measurement/channel_100sample.npy')
-
-
-    a=do_it()
-
-    b=1
+    filename='input.png'
+    a=do_it(filename=filename)
