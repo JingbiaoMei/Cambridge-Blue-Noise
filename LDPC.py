@@ -1,4 +1,6 @@
 from os import error
+
+from numpy import sign
 from QAM_EncoderDecoder import *
 # from LDPC import *
 from ldpc_jossy.py import ldpc
@@ -162,9 +164,9 @@ def llr(ys,ck):
     """returns llr of ys.
     Var is the noise variance of the awgn channel
     """
-    return np.real((2.0**0.5)/(ck*np.conj(ck))*ys)
+    return np.real((2.0**0.5)*(ck*np.conj(ck))*ys)
 
-def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
+def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard_len=8,cks=[1,1,1,1,1,1,1,1,1,1,1,1],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
     """[summary]
 
     Args:
@@ -176,6 +178,18 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard
     Returns:
         LDPCstr_decoded
     """
+    if type(ys_)==type("hi"):
+        ys_=bitstr_to_np_array(ys_)
+        for i in range(len(ys_)):
+            if ys_[i]==1.0:
+                ys_[i]=-1
+
+        for i in range(len(ys_)):
+            if ys_[i]==0.0:
+                ys_[i]=1
+    if type(cks)==type("hi"):
+        cks=bitstr_to_np_array(cks)
+
     ys=ys_
     ys_franges=divide_codebits(ys,decode=True,N=N,rate=rate,r=r,z=z)
 
@@ -343,7 +357,7 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard
     # return LDPCstr_decoded
 
 
-def LDPC_decode_with_niceCKs(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
+def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
     """note: len(ys_)==len(cks)
 
     Args:
@@ -355,6 +369,22 @@ def LDPC_decode_with_niceCKs(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=2
     Returns:
         LDPCstr_decoded
     """
+
+    if type(ys_)==type('hi'):
+        ys_=bitstr_to_np_array(ys_)
+        for i in range(len(ys_)):
+            if ys_[i]==1.0:
+                ys_[i]=-1
+
+        for i in range(len(ys_)):
+            if ys_[i]==0.0:
+                ys_[i]=1
+    if type(cks)==type('hi'):
+        cks=bitstr_to_np_array(cks)
+
+    for i in range(len(ys_)):
+        if cks.any():
+            ys_[i]=ys_[i]/ cks[i]
 
     assert len(ys_)==len(cks)
     ys=separate_real_img(ys_)
