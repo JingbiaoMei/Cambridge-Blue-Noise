@@ -60,7 +60,7 @@ def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=81):
     return output_bits_frange
 
 
-def LDPC_encode(bits,inputLenIndicator_len=81, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=81,len_protection='input_repeat_then_LDPC',repeat_times=5,test=False):
+def LDPC_encode(bits,inputLenIndicator_len=81, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=81,len_protection='input_repeat_then_LDPC',repeat_times=5,test=False,file_type='.tif',inputTypeIndicator_len=8):
     """
     bits: array of numbers. can be 1s and 0s, and also decimals (the y received)     
     len_protection (default:'no'): str. choices: 'no', 'input_repeat_then_LDPC', 'input_repeat_then_LDPC', 'guardBits'
@@ -74,30 +74,10 @@ def LDPC_encode(bits,inputLenIndicator_len=81, inputGuard_len=8,N=2048,rate='1/2
     
 
 
-    if len_protection =='no':
-        inputGuard_len=0
-        add=''
-        for i in input_bit_length_bin:
-            if i=='0':
-                add+='0'
-            elif i=='1':
-                add+='1'
-            else:
-                raise ValueError
-        bits_with_indicator_and_guard=add+bits
-    elif len_protection =='guardBits':
-        add=''
-        for i in input_bit_length_bin:
-            if i=='0':
-                add+='0'
-            elif i=='1':
-                add+='1'
-            else:
-                raise ValueError
-        bits_with_indicator_and_guard=add+'0'*inputGuard_len+bits
-    elif len_protection =='input_repeat_then_LDPC':
+    if len_protection =='input_repeat_then_LDPC':
         inputGuard_len=0
         inputLenIndicator_len*=repeat_times
+        inputTypeIndicator_len=inputTypeIndicator_len*repeat_times
         # add=''
         # for i in input_bit_length_bin:
         #     if i=='0':
@@ -106,27 +86,21 @@ def LDPC_encode(bits,inputLenIndicator_len=81, inputGuard_len=8,N=2048,rate='1/2
         #         add+='1'*repeat_times
         #     else:
         #         raise ValueError
-        add=np.tile(input_bit_length_bin_array,repeat_times)
-        add=array2str(add)
-        bits_with_indicator_and_guard=add+bits
-    # elif len_protection =='input_repeat9_then_LDPC':
-    #     inputGuard_len=0
-    #     inputLenIndicator_len*=9
-    #     add=''
-    #     for i in input_bit_length_bin:
-    #         if i=='0':
-    #             add+='000000000'
-    #         elif i=='1':
-    #             add+='111111111'
-    #         else:
-    #             raise ValueError
-    #     bits_with_indicator_and_guard=add+bits
+        file_length_bits=np.tile(input_bit_length_bin_array,repeat_times)
+        file_length_bits=array2str(file_length_bits)
+
+        file_type_array=file_type_to_bitarray(file_type)
+        file_type_array=np.tile(file_type_array,repeat_times)
+        file_type_bits=array2str(file_type_array)
+
+        bits_with_indicator_and_guard=file_type_bits+file_length_bits+bits
+
     else:
-        raise ValueError("input for len_protection incorrect")
+        raise ValueError("input for len_protection incorrect (not what we should use for this standard)")
 
 
 
-    assert len(bits_with_indicator_and_guard)==input_bit_length+inputLenIndicator_len+inputGuard_len
+    assert len(bits_with_indicator_and_guard)==input_bit_length+inputLenIndicator_len+inputGuard_len+inputTypeIndicator_len
     bits_r_zs=divide_codebits(bits_with_indicator_and_guard,decode=False,N=N,rate=rate,r=r,z=z)
 
     # LDPC_coded=[]
@@ -360,7 +334,7 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=81,inputLenIndicator_len=81, inputGuard
     # return LDPCstr_decoded
 
 
-def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_len=81, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
+def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_len=81, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=5,file_type_len=8):
     """note: len(ys_)==len(cks)
 
     Args:
@@ -444,64 +418,29 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
         more_indicator_len=0
 
         if i==0:
-            if len_protection=='guardBits':
-                more_indicator_len=inputGuard_len
-
-                # TODO: how can we make sure which llrs are certain?
-                # we are certain about these llrs (certain that these codes are 0) (due to zero padding in inputGuard_len)
-                # llrs[inputLenIndicator_len:inputLenIndicator_len+inputGuard_len]=[positive_infnity]*inputGuard_len
-                
-                (app,nit)= LDPC_coder.decode(llrs)
-                transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
-                decoded=transmitted[:int(len(transmitted)/2)]
-                str_decoded = ''
-                for i in decoded:
-                    str_decoded+=str(int(i))
-                decoded=str_decoded[int(inputLenIndicator_len):]
-                len_=str_decoded[:int(inputLenIndicator_len)]
-                total_length= binstr_to_deci(len_ )/r
-
-            elif len_protection=='no':
-                
-                (app,nit)= LDPC_coder.decode(llrs)
-                transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
-                decoded=transmitted[:int(len(transmitted)/2)]
-                str_decoded = ''
-                for i in decoded:
-                    str_decoded+=str(int(i))
-                decoded=str_decoded[int(inputLenIndicator_len):]
-                total_length= binstr_to_deci( str_decoded[:int(inputLenIndicator_len)])/r
-
-
-            elif len_protection=='input_repeat_then_LDPC':
+            if len_protection=='input_repeat_then_LDPC':
                 inputLenIndicator_len*=repeat_times
+                file_type_len*=repeat_times
+                assert inputLenIndicator_len==160 #for this standard
+                assert file_type_len==40 #for this standard
                 (app,nit)= LDPC_coder.decode(llrs)
                 transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
                 decoded=transmitted[:int(len(transmitted)/2)]
                 str_decoded = ''
                 for i in decoded:
                     str_decoded+=str(int(i))
-                decoded=str_decoded[int(inputLenIndicator_len):]
-                length_bin = str_decoded[:int(inputLenIndicator_len)]
+                decoded=str_decoded[int(file_type_len+inputLenIndicator_len):]
+                type_bin=str_decoded[:int(file_type_len)]
+                type_bin = repetitive_decode_str2str(type_bin,repeat_times)
+                file_type = bitstr_to_file_type_str(type_bin)
+                print("file_type: ",file_type)
+
+                length_bin = str_decoded[int(file_type_len):int(inputLenIndicator_len+file_type_len)]
                 length_bin = repetitive_decode_str2str(length_bin,repeat_times)
                 total_length= binstr_to_deci(length_bin)/r
 
-
-            # elif len_protection=='input_repeat9_then_LDPC':
-            #     inputLenIndicator_len*=9
-            #     (app,nit)= LDPC_coder.decode(llrs)
-            #     transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
-            #     decoded=transmitted[:int(len(transmitted)/2)]
-            #     str_decoded = ''
-            #     for i in decoded:
-            #         str_decoded+=str(int(i))
-            #     decoded=str_decoded[int(inputLenIndicator_len):]
-            #     length_bin = str_decoded[:int(inputLenIndicator_len)]
-            #     length_bin = repetitive_decode_str2str(length_bin,9)
-            #     total_length= binstr_to_deci(length_bin)/r
-
             else:
-                raise ValueError("param len_protection wrong")
+                raise ValueError("param len_protection wrong for this standard")
 
 
 

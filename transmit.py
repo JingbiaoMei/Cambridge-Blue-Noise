@@ -91,6 +91,7 @@ class OFDM():
         self.repeat_times = repeat_times
         # e.g. if inputLenIndicator_len is 24, and repeat_times is 3, this means 24x3 bits before LDPC encoding will be used to hold the file_length information
 
+        self.file_type='' # to be added later
 
     # Random symbol for channel estimation
     def generate_random_symbols_seeds(self):
@@ -140,7 +141,7 @@ class OFDM():
         bits_tran = file_to_bitstr(filename)
 
         if LDPC:
-            symbols_tran = encode_bitstr2symbols_via_LDPC(bits_tran,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False)
+            symbols_tran = encode_bitstr2symbols_via_LDPC(bits_tran,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False,file_type=self.file_type)
         else:
             symbols_tran = encode_bitstr2symbols(bits_tran)
         
@@ -400,7 +401,7 @@ class OFDM():
     
         bits_tran = file_to_bitstr(filename)
         if LDPC:
-            symbols_tran = encode_bitstr2symbols_via_LDPC(bits_tran,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False)
+            symbols_tran = encode_bitstr2symbols_via_LDPC(bits_tran,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False,file_type=self.file_type)
         else:
             symbols_tran = encode_bitstr2symbols(bits_tran)
         data_tran = symbol_to_OFDMframes(symbols_tran, self.N, self.prefix_no)
@@ -434,7 +435,7 @@ class OFDM():
         
         data_bits = file_to_bitstr(filename)
         if LDPC:
-            data_symbols= encode_bitstr2symbols_via_LDPC(data_bits,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False)
+            data_symbols= encode_bitstr2symbols_via_LDPC(data_bits,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False,file_type=self.file_type)
         else:
             data_symbols= encode_bitstr2symbols(data_bits)
 
@@ -469,10 +470,15 @@ class OFDM():
         pilot_carriers = all_carriers[0:-1:pilot_ratio]
         data_carriers = np.delete(all_carriers, pilot_carriers- self.min_bin)
         
+        filetype='.'+filename.split('.')[-1]
+        print("filetype: ",filetype)
+        self.file_type=filetype
+        print("filetype added to self.file_type")
+
         data_bits = file_to_bitstr(filename)
 
         if LDPC:
-            data_symbols= encode_bitstr2symbols_via_LDPC(data_bits,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False)
+            data_symbols= encode_bitstr2symbols_via_LDPC(data_bits,inputLenIndicator_len=self.inputLenIndicator_len, N=self.N,rate=self.rate,r=self.r,z=self.z,len_protection=self.len_protection,repeat_times=self.repeat_times,test=False,file_type=self.file_type)
         else:
             data_symbols= encode_bitstr2symbols(data_bits)
         
@@ -530,7 +536,7 @@ class OFDM():
         
         if filename:
             bitstr_to_file(bits, filename)
-        
+
         return data_symbols, pilot_symbols, bits
 
 
@@ -626,8 +632,8 @@ class OFDM():
             data_symbols.append(data)
             
         assert len(ys)==len(cks)
-        bits=LDPC_decode_with_niceCKs(ys,self.N,rate=self.rate,r=self.r,z=self.z,inputLenIndicator_len=self.inputLenIndicator_len, cks=cks,len_protection=self.len_protection,repeat_times=self.repeat_times)
-
+        bits,file_type=LDPC_decode_with_niceCKs(ys,self.N,rate=self.rate,r=self.r,z=self.z,inputLenIndicator_len=self.inputLenIndicator_len, cks=cks,len_protection=self.len_protection,repeat_times=self.repeat_times)
+        self.file_type=file_type
         if filename:
             bitstr_to_file(bits, filename)
         
@@ -723,7 +729,7 @@ class OFDM():
         else:
             _, _, bits_rec = self.data_remove_random_pilots_correct_phase(self, rx_data_frames, carrier_indices, best_freq_response, pilot_values, underfill)
         
-        if filename:
-            bitstr_to_file(bits_rec, filename)
+        if self.file_type:
+            bitstr_to_file(bits_rec, 'decoded'+self.file_type)
 
         return best_offset, best_score, bits_rec, best_imp_response

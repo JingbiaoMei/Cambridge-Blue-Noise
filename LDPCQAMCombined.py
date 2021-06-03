@@ -1,12 +1,12 @@
 from QAM_EncoderDecoder import *
 from LDPC import *
 
-def encode_bitstr2symbols_via_LDPC(bits,inputLenIndicator_len=24, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=27,len_protection='input_repeat_then_LDPC',repeat_times=3,test=False):
+def encode_bitstr2symbols_via_LDPC(bits,inputLenIndicator_len=24, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=27,len_protection='input_repeat_then_LDPC',repeat_times=3,test=False,file_type='.tif'):
     #print("about to do encode_bitstr2symbols encoding")
-    LDPC_encoded_bits=LDPC_encode(bits,inputLenIndicator_len=inputLenIndicator_len, inputGuard_len=inputGuard_len,N=N,rate=rate,r=r,z=z,len_protection=len_protection,repeat_times=repeat_times,test=test)
+    LDPC_encoded_bits=LDPC_encode(bits,inputLenIndicator_len=inputLenIndicator_len, inputGuard_len=inputGuard_len,N=N,rate=rate,r=r,z=z,len_protection=len_protection,repeat_times=repeat_times,test=test,file_type=file_type)
     bits=LDPC_encoded_bits
 
-    
+
     symbols=[]
     for i in range(0,len(bits),2):
         bit1=bits[i]

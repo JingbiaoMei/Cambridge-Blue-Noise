@@ -10,17 +10,78 @@ def array2str(array:list):
         st+=str(i)
     return st
 
-def file_type_to_bitstr(file_type:str) ->str : 
+def file_type_to_bitarray(file_type:str) ->np.array : 
     """file_type must be one of '.tif' or 'tif', '.txt' or 'txt', '.wav' or 'wav'
     """
-    if file_type == '.tif' or file_type == 'tif':
-        return array2str([0,0,1,1,0,0,1,0])
+    if file_type == '.tif' or file_type == 'tif' or file_type == '.tiff' or file_type == 'tiff':
+        return np.array([0,0,1,1,0,0,1,0])
     elif file_type == '.txt' or file_type == 'txt':
-        return array2str([0,1,0,0,1,0,0,0])
+        return np.array([0,1,0,0,1,0,0,0])
     elif file_type == '.wav' or file_type == 'wav':
-        return array2str([1,0,1,0,0,1,0,1])
+        return np.array([1,0,1,0,0,1,0,1])
     else:
         raise KeyError("file_type incorrect")
+
+def bitstr_to_file_type_str(bitstr:str) ->str : 
+    assert len(bitstr) == 8 # for this standard
+    tif=0; txt=0; wav=0
+    if bitstr[0]=='1':
+        wav+=1
+        # tif-=1
+        # txt-=1
+    if bitstr[1]=='1':
+        txt+=1
+        # tif-=1
+        # wav-=1
+    if bitstr[2]=='0':
+        txt+=1
+        # tif-=1
+        # wav-=1
+    if bitstr[3]=='1':
+        tif+=1
+        # wav-=1
+        # txt-=1
+    if bitstr[4]=='1':
+        txt+=1
+        # tif-=1
+        # wav-=1
+    if bitstr[5]=='1':
+        wav+=1
+        # tif-=1
+        # txt-=1
+    if bitstr[6]=='1':
+        tif+=1
+        # tif-=1
+        # wav-=1
+    if bitstr[7]=='1':
+        wav+=1
+        # tif-=1
+        # txt-=1
+    print(" tif=",tif," txt=",txt," wav=",wav)
+    if tif>txt:
+        if tif>wav:
+            return (".tif")
+        elif tif<wav:
+            return (".wav")
+        else:
+            print('tif=wav, returning tif')
+            return(".tif")
+    elif tif<txt:
+        if txt>wav:
+            return (".txt")
+        elif txt<wav:
+            return (".wav")
+        else:
+            # raise KeyError('txt=wav')
+            print('txt=wav, returning txt')
+            return(".txt")
+    elif wav>txt:
+        return (".wav")
+    else:
+        # raise KeyError('tif=txt=wav')
+        print('txt=tif=wav, returning txt')
+        return(".txt")
+    
 
 def bitstr_to_file(bin_strings,filename,cut=0):
     """
@@ -29,7 +90,7 @@ def bitstr_to_file(bin_strings,filename,cut=0):
         filename ([str]): 
         cut (int, optional): [the length of information that you want to cut out at the start]. Defaults to 0.
     """
-
+    print("\nabout to write file, the filename inputed is: ",filename)
     data_bytes = bitarray(bin_strings)
 
     with open(filename, 'wb') as f:
@@ -39,7 +100,7 @@ def bitstr_to_file(bin_strings,filename,cut=0):
 def repetitive_decode_str2str(encodedbits,repeatTimes=5):
     decoded_bits=''
     divided_len=int(len(encodedbits)/repeatTimes)
-    assert divided_len ==32 #for our standard.
+    assert divided_len ==32 or divided_len ==8 #for our standard.
     
     for i in range(0,divided_len):
         zeros=0
@@ -156,5 +217,7 @@ def binstr_to_deci(number):
     return deci
 
 if __name__=='__main__':
-    print(repetitive_decode_str2str('111101000',repeatTimes=3))
+    print(bitstr_to_file_type_str('00110010'))
+    print(bitstr_to_file_type_str('01001000'))
+    print(bitstr_to_file_type_str('01000101'))
 
