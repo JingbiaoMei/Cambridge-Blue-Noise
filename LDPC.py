@@ -497,7 +497,7 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
             LDPCstr_decoded+=decoded
 
 
-            return LDPCstr_decoded[:int(total_length*r)]
+            return LDPCstr_decoded[:int(total_length*r)],file_type
             
         LDPCstr_decoded+=decoded
     
