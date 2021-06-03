@@ -20,14 +20,16 @@ rate='1/2'
 r=0.5
 z=27
 len_protection='input_repeat_then_LDPC'
-repeat_times=3
+repeat_times=7
 
 # Pass the parameters
 test.__init__(test, N, prefix_no, fs, repeat, gap_second, chirp_high, min_bin, max_bin, inputLenIndicator_len=inputLenIndicator_len, rate=rate,r=r,z=z,len_protection=len_protection,repeat_times=repeat_times)
 
 # File for transfer
 # testfile = "test_files/test.jpg"
-testfile = 'test_files/test_small.png'
+# testfile = 'test_files/test_small.png'
+testfile='test_files/shakespeare.txt'
+out_filename='out_shakespeare.txt'
 
 # print the default seed for checking
 print("The default seed is set to:", test.seed)
@@ -68,7 +70,7 @@ channel_freq_response, channel_imp_response = test.estimate_channel_response_pil
 # plt.plot(channel_imp_response)
 
 
-best_offset, best_score, bits_rec, best_imp_response = test.fine_tuning_pilot(test, rx_signal, peak_index1, known_frame, carrier_indices, pilot_values, underfill, data_frames_len=data_frames_len, find_range=30, offset=0, filename="test1.png",LDPC=LDPC_)
+best_offset, best_score, bits_rec, best_imp_response = test.fine_tuning_pilot(test, rx_signal, peak_index1, known_frame, carrier_indices, pilot_values, underfill, data_frames_len=data_frames_len, find_range=30, offset=0, filename=out_filename,LDPC=LDPC_)
 
 # best_offset, best_score, bits_rec, best_imp_response = test.fine_tuning_pilot(test, rx_signal, peak_index1, known_frame, carrier_indices, pilot_values, underfill, data_frames_len=data_frames_len, find_range=30, offset=0, filename="test1.png",LDPC=False)
 

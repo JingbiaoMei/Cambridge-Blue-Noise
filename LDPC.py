@@ -1,13 +1,12 @@
 from os import error
 
 from numpy import sign
+from numpy.core.arrayprint import printoptions
 from QAM_EncoderDecoder import *
 # from LDPC import *
 from ldpc_jossy.py import ldpc
 # from ldpc import *
 from util import *
-
-# TODO: when noise variance gets large, the file length decoded can get wrong (and decoder crashes)
 
 
 def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=27):
@@ -35,13 +34,18 @@ def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=27):
     else:
         k=r*z*24
     
+    k=int(k)
     output_bits_frange=[]
     
     if decode:
-        while len(input_bits)>0:
-            output_bits_frange.append([input_bits[:int(k)],[ ]])
+        # while len(input_bits)>0:
+        #     print("len(input_bits):",len(input_bits))
+        #     output_bits_frange.append([input_bits[:int(k)],[ ]])
             
-            input_bits=input_bits[int(k):]
+        #     input_bits=input_bits[int(k):]
+        for i in range(0,len(input_bits),k):
+            output_bits_frange.append([input_bits[i:i+k],[ ]])
+            
             
     else:
         this_block_remain = k - len(input_bits)
@@ -160,7 +164,6 @@ def LDPC_encode(bits,inputLenIndicator_len=24, inputGuard_len=8,N=2048,rate='1/2
 
 
 def llr(ys,ck):
-    # TODO: channel estimate coeff
     """returns llr of ys.
     Var is the noise variance of the awgn channel
     """
@@ -306,7 +309,6 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard
             if i==len(ys_franges)-1:
                 raise ValueError("last block not detected")
 
-             # TODO: check
             (app,nit)= LDPC_coder.decode(llrs)
 
             transmitted=(app<0.0) # transmitted is np.array of Trues and Falses
@@ -324,7 +326,6 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard
         else: #last block that contain information, doesn't have to be last OFDM block (OFDM has paddings as well)
             # if i!=len(ys_franges)-1:
             #     raise ValueError("not last block")
-             # TODO: check
             # llrs=llrs[:total_length-decoded_length_count]
             # padding=np.array([positive_infnity]*(encoded_block_length_k-(total_length-decoded_length_count)))
             # llrs=np.concatenate([llrs,padding])
@@ -370,6 +371,10 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=27,inputLenIndicator_le
         LDPCstr_decoded
     """
 
+    print("inside LDPC_decode_with_niceCKs")
+    print("type(ys_)=",type(ys_))
+    print("type(cks)=",type(cks))
+
     if type(ys_)==type('hi'):
         ys_=bitstr_to_np_array(ys_)
         for i in range(len(ys_)):
@@ -382,13 +387,20 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=27,inputLenIndicator_le
     if type(cks)==type('hi'):
         cks=bitstr_to_np_array(cks)
 
-    for i in range(len(ys_)):
-        if cks.any():
-            ys_[i]=ys_[i]/ cks[i]
+    print('about to ys_=ys_/ cks')
+    if cks.any():
+        ys_=ys_/ cks
+    # for i in range(len(ys_)):
+    #     if cks.any():
+    #         ys_[i]=ys_[i]/ cks[i]
+
+    print('ys_=ys_/ cks finished')
 
     assert len(ys_)==len(cks)
+    print("about to do ys=separate_real_img(ys_)")
     ys=separate_real_img(ys_)
     
+    print("about to do divide_codebits")
     ys_franges=divide_codebits(ys,decode=True,N=N,rate=rate,r=r,z=z)
     cks_=divide_codebits(cks,decode=True,N=N,rate=rate,r=r,z=z/2)
 
@@ -400,6 +412,7 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=27,inputLenIndicator_le
 
 
 
+    print("about to loop")
     for i in range(len(ys_franges)):
         ys_frange=ys_franges[i]
         cks=np.array(cks_[i][0])
@@ -503,7 +516,6 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=27,inputLenIndicator_le
             if i==len(ys_franges)-1:
                 raise ValueError("last block not detected")
 
-             # TODO: check
             (app,nit)= LDPC_coder.decode(llrs)
 
             transmitted=(app<0.0) # transmitted is np.array of Trues and Falses
@@ -521,7 +533,6 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=27,inputLenIndicator_le
         else: #last block that contain information, doesn't have to be last OFDM block (OFDM has paddings as well)
             # if i!=len(ys_franges)-1:
             #     raise ValueError("not last block")
-             # TODO: check
             # llrs=llrs[:total_length-decoded_length_count]
             # padding=np.array([positive_infnity]*(encoded_block_length_k-(total_length-decoded_length_count)))
             # llrs=np.concatenate([llrs,padding])
