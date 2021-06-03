@@ -51,6 +51,7 @@ def encode_bitstr2symbols(bits):
 
 # -------------Decoder----------------
 def decode_symbols_2_bitstring(symbols,channel_fft=False):
+    print("WARNING: PLEASE CONTACT TRACY IF YOU SEE THIS MESSAGE. This is inside decode_symbols_2_bitstring, about to do Tracy's rubbish algorithm (contact Tracy if you see this message. If it does not appear, then I'm too lazy to change it.)")
     data = ''
     for i in range(len(symbols)):
         if channel_fft.any():
