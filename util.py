@@ -4,6 +4,24 @@ from bitarray import bitarray
 
 positive_infnity = float('inf')
 
+def array2str(array:list):
+    st=''
+    for i in array:
+        st+=str(i)
+    return st
+
+def file_type_to_bitstr(file_type:str) ->str : 
+    """file_type must be one of '.tif' or 'tif', '.txt' or 'txt', '.wav' or 'wav'
+    """
+    if file_type == '.tif' or file_type == 'tif':
+        return array2str([0,0,1,1,0,0,1,0])
+    elif file_type == '.txt' or file_type == 'txt':
+        return array2str([0,1,0,0,1,0,0,0])
+    elif file_type == '.wav' or file_type == 'wav':
+        return array2str([1,0,1,0,0,1,0,1])
+    else:
+        raise KeyError("file_type incorrect")
+
 def bitstr_to_file(bin_strings,filename,cut=0):
     """
     Args:
@@ -18,15 +36,18 @@ def bitstr_to_file(bin_strings,filename,cut=0):
         f.write(data_bytes.tobytes()[cut:])
     print("bitstr written to ",filename)
 
-def repetitive_decode_str2str(encodedbits,repeatTimes=3):
+def repetitive_decode_str2str(encodedbits,repeatTimes=5):
     decoded_bits=''
-    for i in range(0,len(encodedbits),repeatTimes):
+    divided_len=int(len(encodedbits)/repeatTimes)
+    assert divided_len ==32 #for our standard.
+    
+    for i in range(0,divided_len):
         zeros=0
         ones=0
         for j in range(repeatTimes):
-            if encodedbits[i+j]=='0':
+            if encodedbits[i+j*divided_len]=='0':
                 zeros+=1
-            elif encodedbits[i+j]=='1':
+            elif encodedbits[i+j*divided_len]=='1':
                 ones+=1
             else:
                 raise ValueError
@@ -135,6 +156,5 @@ def binstr_to_deci(number):
     return deci
 
 if __name__=='__main__':
-    # print(deci_to_binstr(5))
-    repetitive_decode_str2str('001 110 111 000 110 001 101 010',3)
+    print(repetitive_decode_str2str('111101000',repeatTimes=3))
 

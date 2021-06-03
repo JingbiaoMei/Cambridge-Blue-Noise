@@ -9,7 +9,7 @@ from ldpc_jossy.py import ldpc
 from util import *
 
 
-def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=27):
+def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=81):
 
     """
      Args:
@@ -60,7 +60,7 @@ def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=27):
     return output_bits_frange
 
 
-def LDPC_encode(bits,inputLenIndicator_len=24, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=27,len_protection='input_repeat_then_LDPC',repeat_times=3,test=False):
+def LDPC_encode(bits,inputLenIndicator_len=81, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=81,len_protection='input_repeat_then_LDPC',repeat_times=5,test=False):
     """
     bits: array of numbers. can be 1s and 0s, and also decimals (the y received)     
     len_protection (default:'no'): str. choices: 'no', 'input_repeat_then_LDPC', 'input_repeat_then_LDPC', 'guardBits'
@@ -70,7 +70,7 @@ def LDPC_encode(bits,inputLenIndicator_len=24, inputGuard_len=8,N=2048,rate='1/2
 
     print("input_bit_length:",input_bit_length)
     input_bit_length_bin=deci_to_binstr(input_bit_length,inputLenIndicator_len)
-    
+    input_bit_length_bin_array=bitstr_to_np_array(input_bit_length_bin)
     
 
 
@@ -98,14 +98,16 @@ def LDPC_encode(bits,inputLenIndicator_len=24, inputGuard_len=8,N=2048,rate='1/2
     elif len_protection =='input_repeat_then_LDPC':
         inputGuard_len=0
         inputLenIndicator_len*=repeat_times
-        add=''
-        for i in input_bit_length_bin:
-            if i=='0':
-                add+='0'*repeat_times
-            elif i=='1':
-                add+='1'*repeat_times
-            else:
-                raise ValueError
+        # add=''
+        # for i in input_bit_length_bin:
+        #     if i=='0':
+        #         add+='0'*repeat_times
+        #     elif i=='1':
+        #         add+='1'*repeat_times
+        #     else:
+        #         raise ValueError
+        add=np.tile(input_bit_length_bin_array,repeat_times)
+        add=array2str(add)
         bits_with_indicator_and_guard=add+bits
     # elif len_protection =='input_repeat9_then_LDPC':
     #     inputGuard_len=0
@@ -169,7 +171,7 @@ def llr(ys,ck):
     """
     return np.real((2.0**0.5)*(ck*np.conj(ck))*ys)
 
-def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard_len=8,cks=[1,1,1,1,1,1,1,1,1,1,1,1],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
+def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=81,inputLenIndicator_len=81, inputGuard_len=8,cks=[1,1,1,1,1,1,1,1,1,1,1,1],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=5):
     """[summary]
 
     Args:
@@ -358,7 +360,7 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard
     # return LDPCstr_decoded
 
 
-def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
+def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_len=81, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
     """note: len(ys_)==len(cks)
 
     Args:
