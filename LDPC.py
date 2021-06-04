@@ -283,7 +283,7 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=81,inputLenIndicator_len=81, inputGuard
         elif decoded_length_count+encoded_block_length_k<total_length:
 
             if i==len(ys_franges)-1:
-                raise ValueError("last block not detected")
+                raise ValueError("last block not detected. Probably because file_length is decoded incorrectly.")
 
             (app,nit)= LDPC_coder.decode(llrs)
 
@@ -437,7 +437,8 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
 
                 length_bin = str_decoded[int(file_type_len):int(inputLenIndicator_len+file_type_len)]
                 length_bin = repetitive_decode_str2str(length_bin,repeat_times)
-                total_length= binstr_to_deci(length_bin)/r
+                original_file_length = binstr_to_deci(length_bin)
+                total_length = original_file_length/r
 
             else:
                 raise ValueError("param len_protection wrong for this standard")
@@ -446,7 +447,8 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
 
             
             total_length=int(total_length)
-            print("\ntotal_length: ",total_length)
+            print("\ntotal_length: ",total_length," bits to decode.")
+            print("file_length:",original_file_length)
             if OnlyTestLen:
                 return total_length/2==FileLengthKnown
             decoded_length_count+=int(encoded_block_length_k - inputLenIndicator_len/r - more_indicator_len/r)
