@@ -53,6 +53,7 @@ def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=81):
             output_bits_frange.append([input_bits[:int(k)],[]])
             input_bits=input_bits[int(k):]
             this_block_remain = k - len(input_bits)
+        # input_bits=input_bits+ '0'*int(this_block_remain) #padding
         input_bits=input_bits+ deci_below_one_to_binstr(np.pi/10,this_block_remain)  #'0'*int(this_block_remain) #padding
         assert len(input_bits)==k
         output_bits_frange.append([input_bits,rate,z])
@@ -319,7 +320,7 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=81,inputLenIndicator_len=32, inputGuard
     # return LDPCstr_decoded
 
 
-def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_len=32, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=5,file_type_len=8):
+def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_len=32, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=5,file_type_len=8,ysReal=False,withllrs_modification=True):
     """note: len(ys_)==len(cks)
 
     Args:
@@ -334,6 +335,7 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
 
     print("inside LDPC_decode_with_niceCKs")
     print("type(ys_)=",type(ys_))
+    ys_=np.array(ys_)
     print("type(cks)=",type(cks))
 
     if type(ys_)==type('hi'):
@@ -357,9 +359,12 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
 
     print('ys_=ys_/ cks finished')
 
-    assert len(ys_)==len(cks)
+    # assert len(ys_)==len(cks)
     print("about to do ys=separate_real_img(ys_)")
     ys=separate_real_img(ys_)
+
+    if ysReal:
+        ys=ys_
     
     print("about to do divide_codebits")
     ys_franges=divide_codebits(ys,decode=True,N=N,rate=rate,r=r,z=z)
@@ -406,6 +411,7 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
             if len_protection=='input_repeat_then_LDPC':
                 inputLenIndicator_len*=repeat_times
                 file_type_len*=repeat_times
+                more_indicator_len=file_type_len
                 assert inputLenIndicator_len==160 #for this standard
                 assert file_type_len==40 #for this standard
 
@@ -469,16 +475,26 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
             assert len(llrs)==encoded_block_length_k
 
 
+            # decoded_length_count + encoded_block_length_k > total_length
             # check which entries in llrs are certain
-            padding_bits_len=decoded_length_count+encoded_block_length_k-total_length
-            padding_bits=deci_below_one_to_binstr(np.pi/10,padding_bits_len)
-            # for i in range(len(padding_bits)-1,-1,-1):
-            #     if padding_bits[i]=='0':
-            #         llrs[-i-1]==positive_infnity
-            #     elif padding_bits[i]=='1':
-            #         llrs[-i-1]==-positive_infnity
-            #     else:
-            #         raise ValueError("padding_bits[i] not '0'or '1'")
+            
+            if withllrs_modification:
+                padding_bits_len=int((decoded_length_count+encoded_block_length_k-total_length)*r)
+                print("\npadding_bits_len: ",padding_bits_len)
+                padding_bits=deci_below_one_to_binstr(np.pi/10,padding_bits_len)
+                llrs_index_start=int((total_length-decoded_length_count)*r)
+                print("llrs_index_start: ",llrs_index_start)
+                for i in range(len(padding_bits)):
+                    if padding_bits[i]=='0':
+                        if llrs[llrs_index_start+i]<0:
+                            print("violating llr at llrs_index_start+i=",llrs_index_start+i)
+                        llrs[llrs_index_start+i]=positive_infnity
+                    elif padding_bits[i]=='1':
+                        if llrs[llrs_index_start+i]>0:
+                            print("violating llr at llrs_index_start+i=",llrs_index_start+i)
+                        llrs[llrs_index_start+i]=-positive_infnity
+                    else:
+                        raise ValueError("padding_bits[i] not '0'or '1'")
 
             # TODO: how can we make sure which llrs are certain?
             # we are certain about these llrs (certain that these codes are 0 (due to padding in LDPC encoder)) 
@@ -501,11 +517,11 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
 
             LDPCstr_decoded+=decoded
 
-
+            print("return [LDPCstr_decoded,file_type] , please check you have two parameters ready before the = (e.g. decoded, filetype = LDPC_decode_....)")
             return LDPCstr_decoded[:int(total_length*r)],file_type
             
         LDPCstr_decoded+=decoded
     
-    raise ValueError("should not execute to this line")
-    return LDPCstr_decoded[:int(total_length*r)]
+    # raise ValueError("should not execute to this line")
+    return LDPCstr_decoded[:int(total_length*r)],file_type
     # return LDPCstr_decoded

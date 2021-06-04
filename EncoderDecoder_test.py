@@ -7,7 +7,7 @@ from sys import stdout
 
 
 
-def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='no',inputLenIndicator_len=24,inputGuard_len=8,rate='1/2',r=0.5,z=27,filename='input.png',OnlyTestLen=True,repeat_times=3,cut=2000):
+def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='input_repeat_then_LDPC',inputLenIndicator_len=32,inputGuard_len=8,rate='1/2',r=0.5,z=81,filename='input.png',OnlyTestLen=True,repeat_times=5,cut=2000):
 
     print("\n----------------- New Trial ----------------- \nlen_protection is: ",len_protection)
 
@@ -37,11 +37,12 @@ def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='no',inpu
     print("input average power: ",input_P)
     
     
-    # snr=1.46
+    snr=1.5
 
     print("\nsnr:", snr)
 
     var=input_P/snr
+    # var=0
     print("var:", var)
 
     data_received=[]
@@ -55,15 +56,11 @@ def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='no',inpu
 
     #-- LDPC decoding --
 
-    cks=[var**0.5]*int(N/2)
+    cks=np.array([var**0.5]*len(ys_))
 
     print('len(ys_):', len(ys_)) 
     assert len(ys_)>=len(data_transmitted)
-    Len_detected= LDPC_decode(ys_,N,rate=rate,r=r,z=z,inputLenIndicator_len=inputLenIndicator_len,inputGuard_len=inputGuard_len,cks=cks,len_protection=len_protection,OnlyTestLen=OnlyTestLen,FileLengthKnown=len(bits),repeat_times=repeat_times) #LDPC_coder.encode(bin_strings, dectype='sumprod2', corr_factor=0.7)
-    print("Len_detected: ",Len_detected)
-
-    return Len_detected
-    # LDPC_decoded_bits= LDPC_decode(ys_,N,rate=rate,r=r,z=z,inputLenIndicator_len=inputLenIndicator_len,inputGuard_len=inputGuard_len,cks=cks,len_protection=len_protection,OnlyTestLen=OnlyTestLen,FileLengthKnown=len(bits)) #LDPC_coder.encode(bin_strings, dectype='sumprod2', corr_factor=0.7)
+    LDPC_decoded_bits, file_type= LDPC_decode_with_niceCKs(ys_,N,cks=cks,ysReal=True) #LDPC_coder.encode(bin_strings, dectype='sumprod2', corr_factor=0.7)
     # len(LDPC_decoded_bits)=3296 compared to len(original bits)=2000.
     # len(LDPC_encoded_bits)=4056
 
@@ -71,6 +68,7 @@ def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='no',inpu
 
 
     print('\ninput file length:',len(bits))
+    print('\decoded file length:',len(LDPC_decoded_bits))
     assert len(LDPC_decoded_bits)==len(bits)
 
     biterrors = np.sum(bitstr_to_np_array(LDPC_decoded_bits) != bitstr_to_np_array(bits) )
@@ -87,5 +85,5 @@ def do_it(N=2048,prefix_no=32,snr=1.5,ReturnError=False,len_protection='no',inpu
     print("finished one.")
 
 if __name__=='__main__':
-    filename='input.png'
+    filename='test_files/shakespeare_small.txt'
     a=do_it(filename=filename)
