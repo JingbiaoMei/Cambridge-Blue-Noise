@@ -195,8 +195,8 @@ def deci_below_one_to_binstr(number,total_len):
             number-=1
             rt+='1'
         else:
-            rt_='0'
-        
+            rt-='0'
+
 
     return rt
 
