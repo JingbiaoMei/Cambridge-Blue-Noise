@@ -409,11 +409,6 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
                 assert inputLenIndicator_len==160 #for this standard
                 assert file_type_len==40 #for this standard
 
-                # check which entries in llrs are certain
-
-                # TODO: how can we make sure which llrs are certain?
-                # we are certain about these llrs (certain that these codes are 0 (due to padding in LDPC encoder)) 
-                
                 (app,nit)= LDPC_coder.decode(llrs)
                 transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
                 decoded=transmitted[:int(len(transmitted)/2)]
@@ -472,6 +467,23 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
             # llrs=np.concatenate([llrs,padding])
 
             assert len(llrs)==encoded_block_length_k
+
+
+            # check which entries in llrs are certain
+            padding_bits_len=decoded_length_count+encoded_block_length_k-total_length
+            padding_bits=deci_below_one_to_binstr(np.pi/10,padding_bits_len)
+            # for i in range(len(padding_bits)-1,-1,-1):
+            #     if padding_bits[i]=='0':
+            #         llrs[-i-1]==positive_infnity
+            #     elif padding_bits[i]=='1':
+            #         llrs[-i-1]==-positive_infnity
+            #     else:
+            #         raise ValueError("padding_bits[i] not '0'or '1'")
+
+            # TODO: how can we make sure which llrs are certain?
+            # we are certain about these llrs (certain that these codes are 0 (due to padding in LDPC encoder)) 
+            
+            llrs=np.array(llrs)
         
             (app,nit)= LDPC_coder.decode(llrs)
 
