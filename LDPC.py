@@ -53,14 +53,14 @@ def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=81):
             output_bits_frange.append([input_bits[:int(k)],[]])
             input_bits=input_bits[int(k):]
             this_block_remain = k - len(input_bits)
-        input_bits=input_bits+'0'*int(this_block_remain) #padding
+        input_bits=input_bits+ deci_below_one_to_binstr(np.pi/10,this_block_remain)  #'0'*int(this_block_remain) #padding
         assert len(input_bits)==k
         output_bits_frange.append([input_bits,rate,z])
     
     return output_bits_frange
 
 
-def LDPC_encode(bits,inputLenIndicator_len=81, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=81,len_protection='input_repeat_then_LDPC',repeat_times=5,test=False,file_type='.tif',inputTypeIndicator_len=8):
+def LDPC_encode(bits,inputLenIndicator_len=32, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=81,len_protection='input_repeat_then_LDPC',repeat_times=5,test=False,file_type='.tif',inputTypeIndicator_len=8):
     """
     bits: array of numbers. can be 1s and 0s, and also decimals (the y received)     
     len_protection (default:'no'): str. choices: 'no', 'input_repeat_then_LDPC', 'input_repeat_then_LDPC', 'guardBits'
@@ -203,11 +203,6 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=81,inputLenIndicator_len=32, inputGuard
         if i==0:
             if len_protection=='guardBits':
                 more_indicator_len=inputGuard_len
-
-                # TODO: how can we make sure which llrs are certain?
-                # we are certain about these llrs (certain that these codes are 0) (due to zero padding in inputGuard_len)
-                # llrs[inputLenIndicator_len:inputLenIndicator_len+inputGuard_len]=[positive_infnity]*inputGuard_len
-                
                 (app,nit)= LDPC_coder.decode(llrs)
                 transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
                 decoded=transmitted[:int(len(transmitted)/2)]
@@ -413,6 +408,12 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
                 file_type_len*=repeat_times
                 assert inputLenIndicator_len==160 #for this standard
                 assert file_type_len==40 #for this standard
+
+                # check which entries in llrs are certain
+
+                # TODO: how can we make sure which llrs are certain?
+                # we are certain about these llrs (certain that these codes are 0 (due to padding in LDPC encoder)) 
+                
                 (app,nit)= LDPC_coder.decode(llrs)
                 transmitted=(app<0.0) # transmitted is np.array of Trues and Falses # this is the LDPC encoded bits before awgn transmission
                 decoded=transmitted[:int(len(transmitted)/2)]

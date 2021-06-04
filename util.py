@@ -2,7 +2,7 @@ import numpy as np
 import sys
 from bitarray import bitarray
 
-positive_infnity = float('inf')
+positive_infnity = 1000000
 
 def array2str(array:list):
     st=''
@@ -27,36 +27,20 @@ def bitstr_to_file_type_str(bitstr:str) ->str :
     tif=0; txt=0; wav=0
     if bitstr[0]=='1':
         wav+=1
-        # tif-=1
-        # txt-=1
     if bitstr[1]=='1':
         txt+=1
-        # tif-=1
-        # wav-=1
     if bitstr[2]=='0':
         txt+=1
-        # tif-=1
-        # wav-=1
     if bitstr[3]=='1':
         tif+=1
-        # wav-=1
-        # txt-=1
     if bitstr[4]=='1':
         txt+=1
-        # tif-=1
-        # wav-=1
     if bitstr[5]=='1':
         wav+=1
-        # tif-=1
-        # txt-=1
     if bitstr[6]=='1':
         tif+=1
-        # tif-=1
-        # wav-=1
     if bitstr[7]=='1':
         wav+=1
-        # tif-=1
-        # txt-=1
     print(" tif=",tif," txt=",txt," wav=",wav)
     if tif>txt:
         if tif>wav:
@@ -204,6 +188,18 @@ def deci_to_binstr(number,total_len):
         raise ValueError("total_len not large enough to express number")
     return bin
 
+def deci_below_one_to_binstr(number,total_len):
+    rt=''
+    for i in range(total_len):
+        if number*2<1:
+            number-=1
+            rt+='1'
+        else:
+            rt_='0'
+        
+
+    return rt
+
 def awgn(x, noise_var):
     noise = np.sqrt(noise_var)*np.random.randn(len(x))
     return np.add(x, noise)
@@ -217,7 +213,9 @@ def binstr_to_deci(number):
     return deci
 
 if __name__=='__main__':
-    print(bitstr_to_file_type_str('00110010'))
-    print(bitstr_to_file_type_str('01001000'))
-    print(bitstr_to_file_type_str('01000101'))
+    print(format(int(6442440606/2),'b'))
+    print(len(format(int(6442440606/2),'b')))
+    # print(deci_to_binstr(6442440606,32))
+    # print(bitstr_to_file_type_str('01001000'))
+    # print(bitstr_to_file_type_str('01000101'))
 

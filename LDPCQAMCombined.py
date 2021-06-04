@@ -1,7 +1,7 @@
 from QAM_EncoderDecoder import *
 from LDPC import *
 
-def encode_bitstr2symbols_via_LDPC(bits,inputLenIndicator_len=24, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=27,len_protection='input_repeat_then_LDPC',repeat_times=3,test=False,file_type='.tif'):
+def encode_bitstr2symbols_via_LDPC(bits,inputLenIndicator_len=32, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=27,len_protection='input_repeat_then_LDPC',repeat_times=5,test=False,file_type='.tif'):
     #print("about to do encode_bitstr2symbols encoding")
     LDPC_encoded_bits=LDPC_encode(bits,inputLenIndicator_len=inputLenIndicator_len, inputGuard_len=inputGuard_len,N=N,rate=rate,r=r,z=z,len_protection=len_protection,repeat_times=repeat_times,test=test,file_type=file_type)
     bits=LDPC_encoded_bits
@@ -26,7 +26,7 @@ def encode_bitstr2symbols_via_LDPC(bits,inputLenIndicator_len=24, inputGuard_len
     #print("encode_bitstr2symbols encoding finished")
     return symbols
 
-def OFDMframes_to_bitstring_via_LDPC(OFDM_frames,N,prefix_no,channel_fft,rate='1/2',r=0.5,z=27,inputLenIndicator_len=24, inputGuard_len=8,len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=3):
+def OFDMframes_to_bitstring_via_LDPC(OFDM_frames,N,prefix_no,channel_fft,rate='1/2',r=0.5,z=81,inputLenIndicator_len=32, inputGuard_len=8,len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=5):
     print("inside OFDMframes_to_bitstring_via_LDPC")
     cks=channel_fft
     ys_=OFDMframes_to_y_float(OFDM_frames,N,prefix_no)
