@@ -71,21 +71,11 @@ def LDPC_encode(bits,inputLenIndicator_len=81, inputGuard_len=8,N=2048,rate='1/2
     print("input_bit_length:",input_bit_length)
     input_bit_length_bin=deci_to_binstr(input_bit_length,inputLenIndicator_len)
     input_bit_length_bin_array=bitstr_to_np_array(input_bit_length_bin)
-    
-
 
     if len_protection =='input_repeat_then_LDPC':
         inputGuard_len=0
         inputLenIndicator_len*=repeat_times
         inputTypeIndicator_len=inputTypeIndicator_len*repeat_times
-        # add=''
-        # for i in input_bit_length_bin:
-        #     if i=='0':
-        #         add+='0'*repeat_times
-        #     elif i=='1':
-        #         add+='1'*repeat_times
-        #     else:
-        #         raise ValueError
         file_length_bits=np.tile(input_bit_length_bin_array,repeat_times)
         file_length_bits=array2str(file_length_bits)
 
@@ -145,7 +135,7 @@ def llr(ys,ck):
     """
     return np.real((2.0**0.5)*(ck*np.conj(ck))*ys)
 
-def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=81,inputLenIndicator_len=81, inputGuard_len=8,cks=[1,1,1,1,1,1,1,1,1,1,1,1],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=5):
+def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=81,inputLenIndicator_len=32, inputGuard_len=8,cks=[1,1,1,1,1,1,1,1,1,1,1,1],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=5):
     """[summary]
 
     Args:
@@ -334,7 +324,7 @@ def LDPC_decode(ys_,N,rate='1/2',r=0.5,z=81,inputLenIndicator_len=81, inputGuard
     # return LDPCstr_decoded
 
 
-def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_len=81, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=5,file_type_len=8):
+def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_len=32, inputGuard_len=8,cks=[],len_protection='input_repeat_then_LDPC',OnlyTestLen=False,FileLengthKnown=0,repeat_times=5,file_type_len=8):
     """note: len(ys_)==len(cks)
 
     Args:
