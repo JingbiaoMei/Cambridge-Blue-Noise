@@ -191,11 +191,12 @@ def deci_to_binstr(number,total_len):
 def deci_below_one_to_binstr(number,total_len):
     rt=''
     for i in range(total_len):
-        if number*2<1:
+        if number>1:
             number-=1
             rt+='1'
         else:
-            rt-='0'
+            rt+='0'
+        number*=2
 
 
     return rt
@@ -213,8 +214,8 @@ def binstr_to_deci(number):
     return deci
 
 if __name__=='__main__':
-    print(format(int(6442440606/2),'b'))
-    print(len(format(int(6442440606/2),'b')))
+    print(deci_below_one_to_binstr(np.pi/10,20))
+    # print(len(format(int(6442440606/2),'b')))
     # print(deci_to_binstr(6442440606,32))
     # print(bitstr_to_file_type_str('01001000'))
     # print(bitstr_to_file_type_str('01000101'))
