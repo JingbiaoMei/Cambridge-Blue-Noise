@@ -319,7 +319,7 @@ def correct_phase_decode_data(all_frames, carrier_indices, channel_fft, filename
     
     return data_symbols, pilot_symbols, bits
 
-def correct_phase_decode_data_ldpc(all_frames, carrier_indices, channel_fft, filename=None, pilot_value=1+1j):
+def correct_phase_decode_data_ldpc(all_frames, carrier_indices, channel_fft, withllrs_modification=False, filename=None, pilot_value=1+1j):
     
     pilot_indices = carrier_indices[0][10:70][::3]
     data_indices = np.array(carrier_indices[1])
@@ -359,7 +359,7 @@ def correct_phase_decode_data_ldpc(all_frames, carrier_indices, channel_fft, fil
         data_symbols.append(data)
         
     assert len(ys) == len(cks)
-    bits, file_type = LDPC_decode_with_niceCKs(ys,N, cks=cks)
+    bits, file_type = LDPC_decode_with_niceCKs(ys,N, cks=cks, withllrs_modification=withllrs_modification)
 
     if filename:
         bitstr_to_file(bits, filename)
@@ -370,7 +370,7 @@ def correct_phase_decode_data_ldpc(all_frames, carrier_indices, channel_fft, fil
 
 
 
-def fine_tuning(rx_signal, peak_start, peak_end, known_frames, inverse_chirp, carrier_indices, find_range=10, offset=20, filename=None, LDPC_on=True):
+def fine_tuning(rx_signal, peak_start, peak_end, known_frames, inverse_chirp, carrier_indices, withllrs_modification=False, find_range=10, offset=20,  filename=None, LDPC_on=True):
         
     score_list = []
     offset_list = []
@@ -431,7 +431,7 @@ def fine_tuning(rx_signal, peak_start, peak_end, known_frames, inverse_chirp, ca
     rx_data_frames = np.split(rx_data_full, len(rx_data_full)/(N+prefix_no))
 
     if LDPC_on:
-        _, _, bits_rec = correct_phase_decode_data_ldpc(rx_data_frames, carrier_indices, freq_response)
+        _, _, bits_rec = correct_phase_decode_data_ldpc(rx_data_frames, carrier_indices, freq_response, withllrs_modification=withllrs_modification)
 
     else:
         _, _, bits_rec = correct_phase_decode_data(rx_data_frames, carrier_indices, best_freq_response)
