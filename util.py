@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 from bitarray import bitarray
-
+import os
 positive_infnity = 1000000
 
 def array2str(array:list):
@@ -212,6 +212,42 @@ def binstr_to_deci(number):
         deci+=int(number[i])*base
         base*=2
     return deci
+
+def error_rate(bits_tran, bits_rec):
+    length = len(bits_tran)
+    a1 = np.fromstring(bits_tran, 'u1') - ord('0')
+    a2 = np.fromstring(bits_rec, 'u1') - ord('0')
+    a2 = a2[0:length]
+    return (length - np.sum(a1 == a2)) / length
+
+
+def bitrate(file, audio, fs):
+    '''
+    file: file path
+    audio: audio numpy array
+    fs: sampling frequency
+    '''
+
+    size_byte = os.stat(file).st_size
+    audio_length = len(audio) / fs
+    rate = size_byte * 8 / audio_length / 1024
+    print('bitrate of the system is:', str.format('{0:.2f}', rate), 'Kbits/s')
+    return rate
+
+
+def impulse_score(impulse):
+    # The input impulse should be normalised (Minus its initial mean)
+    initial_no = 60
+    last_no = 60
+    impulse = np.real(impulse)
+    impulse = impulse - np.average(impulse)
+    score = np.average(np.abs(impulse[0:initial_no])) / \
+        np.average(np.abs(impulse[:-last_no]))
+    return score
+
+
+
+
 
 if __name__=='__main__':
     print(deci_below_one_to_binstr(np.pi/10,20))

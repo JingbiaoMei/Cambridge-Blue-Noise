@@ -61,7 +61,7 @@ def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=81):
     return output_bits_frange
 
 
-def LDPC_encode(bits,inputLenIndicator_len=32, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=81,len_protection='input_repeat_then_LDPC',repeat_times=5,test=False,file_type='.tif',inputTypeIndicator_len=8):
+def LDPC_encode(bits,inputLenIndicator_len=32, inputGuard_len=8,N=2048,rate='1/2',r=0.5,z=81,len_protection='input_repeat_then_LDPC',repeat_times=5,file_type='.tif',inputTypeIndicator_len=8):
     """
     bits: array of numbers. can be 1s and 0s, and also decimals (the y received)     
     len_protection (default:'no'): str. choices: 'no', 'input_repeat_then_LDPC', 'input_repeat_then_LDPC', 'guardBits'
@@ -122,10 +122,6 @@ def LDPC_encode(bits,inputLenIndicator_len=32, inputGuard_len=8,N=2048,rate='1/2
         LDPCstr_coded+=coded
         rzs.append([r,z])
         # LDPC_coded.append([coded,r,z])
-        if test:
-            return LDPCstr_coded
-
-    a=LDPCstr_coded[:int(inputLenIndicator_len)]
     return LDPCstr_coded
 
 
