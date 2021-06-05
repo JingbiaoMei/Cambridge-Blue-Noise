@@ -198,6 +198,18 @@ def deci_below_one_to_binstr(number,total_len):
             rt+='0'
         number*=2
 
+    return rt
+
+def random_binstr_from_pi(total_len):
+    rt='11'
+    number=np.pi-3
+    for i in range(total_len-2):
+        if number>1:
+            number-=1
+            rt+='1'
+        else:
+            rt+='0'
+        number*=2
 
     return rt
 
@@ -250,7 +262,7 @@ def impulse_score(impulse):
 
 
 if __name__=='__main__':
-    print(deci_below_one_to_binstr(np.pi/10,20))
+    print(random_binstr_from_pi(20))
     # print(len(format(int(6442440606/2),'b')))
     # print(deci_to_binstr(6442440606,32))
     # print(bitstr_to_file_type_str('01001000'))

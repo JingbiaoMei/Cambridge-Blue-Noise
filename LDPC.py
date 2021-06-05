@@ -54,7 +54,7 @@ def divide_codebits(input__bits,decode=False,N=2048,rate='1/2',r=0.5,z=81):
             input_bits=input_bits[int(k):]
             this_block_remain = k - len(input_bits)
         # input_bits=input_bits+ '0'*int(this_block_remain) #padding
-        input_bits=input_bits+ deci_below_one_to_binstr(np.pi/10,this_block_remain)  #'0'*int(this_block_remain) #padding
+        input_bits=input_bits+ random_binstr_from_pi(this_block_remain)  #'0'*int(this_block_remain) #padding
         assert len(input_bits)==k
         output_bits_frange.append([input_bits,rate,z])
     
@@ -477,7 +477,7 @@ def LDPC_decode_with_niceCKs(ys_,N='',rate='1/2',r=0.5,z=81,inputLenIndicator_le
             if withllrs_modification:
                 padding_bits_len=int((decoded_length_count+encoded_block_length_k-total_length)*r)
                 print("\npadding_bits_len: ",padding_bits_len)
-                padding_bits=deci_below_one_to_binstr(np.pi/10,padding_bits_len)
+                padding_bits=random_binstr_from_pi(padding_bits_len)
                 llrs_index_start=int((total_length-decoded_length_count)*r)
                 print("llrs_index_start: ",llrs_index_start)
                 for i in range(len(padding_bits)):
