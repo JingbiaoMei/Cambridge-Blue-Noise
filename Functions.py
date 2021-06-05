@@ -186,7 +186,7 @@ def create_tx_waveform(filename):
         
     print(len(payload_frames))
     gap = 1*fs # just to pad start & end of transmission
-    tx_waveform = np.concatenate((np.zeros(gap), ch, random_frame_filler, known_frames, payload_frames, ch, np.zeros(gap)), axis=None)
+    tx_waveform = np.concatenate((np.zeros(gap), ch, random_frame_filler, known_frames, payload_frames, inv_ch, np.zeros(gap)), axis=None)
     
     filename_upload = 'sound_files/transmit.wav'
     sf.write(filename_upload, tx_waveform, fs)
@@ -241,14 +241,13 @@ def real_channel_response_file(rec_file):
     channel_op = np.array(recording)
     return channel_op
 
-def matched_filter(signal, match):
+def matched_filter(signal, match1, match2):
     """Returns convolution of signal with matched filter and its peak index"""
-    
-    convolution = np.convolve(signal, match)
-    peak_index1 = np.argmax(np.abs(convolution[:len(convolution)//2])) # check 1st half of signal
-    peak_index2 = np.argmax(np.abs(convolution[len(convolution)//2:])) + len(convolution)//2 # check 2nd half of signal
-    
-    return convolution, peak_index1, peak_index2
+    convolution1 = np.convolve(signal[:len(signal)//2], match1)
+    convolution2 = np.convolve(signal[len(signal)//2:], match2)
+    peak_index1 = np.argmax(convolution1)
+    peak_index2 = np.argmax(convolution2) + len(signal)//2
+    return convolution1, convolution2, peak_index1, peak_index2
 
 
 def channel_estimate(signal, start, known_frames, offset=0):
