@@ -35,7 +35,7 @@ def random_symbols_from_binary(length, seed):
 
     random_symbols = np.array([mapping[str(r)[1:-1]] for r in random_binary_values])
     
-    return random_symbols
+    return random_symbols / np.sqrt(2)
 
 
 
@@ -125,7 +125,6 @@ def data_add_known_pilots(filename, min_bin, max_bin, pilot_params, ldpc_on=True
     pilot_value = 1+1j
     pilot_carriers = np.arange(pilot_params[0], pilot_params[1], pilot_params[2])
     
-    all_carriers = np.arange(N//2)
     usable_carriers = np.arange(min_bin, max_bin)
     data_carriers = [x for x in usable_carriers if x not in pilot_carriers]
     
