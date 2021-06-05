@@ -1,3 +1,5 @@
 *.pyc
 .vscode/
 .ipynb_checkpoints/
+ldpc_jossy/
+Decode/

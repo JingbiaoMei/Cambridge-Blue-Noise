@@ -249,12 +249,12 @@ def bitrate(file, audio, fs):
 
 def impulse_score(impulse):
     # The input impulse should be normalised (Minus its initial mean)
-    initial_no = 60
-    last_no = 60
+    initial_no = 70
+    last_no = 30
     impulse = np.real(impulse)
     impulse = impulse - np.average(impulse)
     score = np.average(np.abs(impulse[0:initial_no])) / \
-        np.average(np.abs(impulse[:-last_no]))
+        np.average(np.abs(impulse[-last_no:]))
     return score
 
 

@@ -392,7 +392,7 @@ def fine_tuning(rx_signal, peak_start, peak_end, known_frames, inverse_chirp, ca
         score = impulse_score(imp_response)
         # Append the score into the list 
         score_list.append(score)
-        print("index and score are:", i, score)
+        #print("index and score are:", i, score)
 
     # <----- Use the best score calculated to do the computation again ----->
     # Find the best score
@@ -402,7 +402,7 @@ def fine_tuning(rx_signal, peak_start, peak_end, known_frames, inverse_chirp, ca
     # Find the best offset value 
     best_offset = offset_list[best_score_index]
     
-    print("Found best Offset:", best_offset, "Found bets score:", best_score )
+    print("Found best Offset:", best_offset, "Found best score:", best_score )
 
     # Refine the starting point with the best offset
     #start_refined = start - best_offset
