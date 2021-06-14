@@ -438,7 +438,7 @@ def fine_tuning(rx_signal, peak_start, peak_end, known_frames, inverse_chirp, ca
     
     return bits_rec, best_imp_response
 
-def test(rx_signal, peak_start, peak_end, known_frames, inverse_chirp, carrier_indices, offset, LDPC_on=True):
+def test(rx_signal, peak_start, peak_end, known_frames, inverse_chirp, carrier_indices, offset, withllrs_modification=False, LDPC_on=True):
     
     # Redo the channel measurements with the best val
     freq_response, imp_response, _ = channel_estimate(rx_signal, peak_start, known_frames, offset)
@@ -455,7 +455,7 @@ def test(rx_signal, peak_start, peak_end, known_frames, inverse_chirp, carrier_i
     rx_data_frames = np.split(rx_data_full, len(rx_data_full)/(N+prefix_no))
 
     if LDPC_on:
-        _, _, bits_rec = correct_phase_decode_data_ldpc(rx_data_frames, carrier_indices, freq_response)
+        _, _, bits_rec = correct_phase_decode_data_ldpc(rx_data_frames, carrier_indices, freq_response, withllrs_modification=withllrs_modification)
 
     else:
         _, _, bits_rec = correct_phase_decode_data(rx_data_frames, carrier_indices, freq_response)
